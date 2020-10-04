@@ -426,6 +426,12 @@ public class NidabaApplicationWindow {
 		HomePanel.add(list);
 		
 		JButton homeNovoArquivoButton = new JButton("NOVO ARQUIVO");
+		homeNovoArquivoButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				EditorPanel.setVisible(true);
+				HomePanel.setVisible(false);
+			}
+		});
 		homeNovoArquivoButton.setBounds(548, 523, 147, 29);
 		HomePanel.add(homeNovoArquivoButton);
 		
