@@ -5,14 +5,16 @@ import java.util.Date;
 
 public class File implements Serializable {
 	private static final long serialVersionUID = 145812707464104731L;
-	
+
 	private Integer id;
 	private String name;
 	private String owner;
 	private Date creationDate;
 	private Date modificationDate;
 	private String content;
+	
 	private String[] allowedUsers;
+	
 	public Integer getId() {
 		return id;
 	}

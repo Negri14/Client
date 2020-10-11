@@ -1,8 +1,6 @@
 package br.usp.nidaba.event;
 
-import java.beans.Transient;
 import java.io.Serializable;
-import java.util.Map;
 
 public class Event implements Serializable {
 	private static final long serialVersionUID = 10L;

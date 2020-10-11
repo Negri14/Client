@@ -12,50 +12,64 @@ import java.awt.event.ActionListener;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
+import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
 import javax.swing.JTextField;
-import javax.swing.JTextPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
-import javax.swing.border.LineBorder;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 
 import org.apache.commons.io.FileUtils;
 
+import br.usp.nidaba.event.Modificacao;
+import br.usp.nidaba.event.DeleteRequest;
+import br.usp.nidaba.event.DeleteResponse;
+import br.usp.nidaba.event.EditingResponse;
+import br.usp.nidaba.event.EditorRequest;
+import br.usp.nidaba.event.EditorResponse;
 import br.usp.nidaba.event.Event;
 import br.usp.nidaba.event.EventType;
 import br.usp.nidaba.event.File;
 import br.usp.nidaba.event.HomeRequest;
 import br.usp.nidaba.event.HomeResponse;
-import br.usp.nidaba.event.LoginRequest;
 import br.usp.nidaba.event.LoginResponse;
 import br.usp.nidaba.event.LoginStatus;
-import br.usp.nidaba.event.NewFileRequest;
 import br.usp.nidaba.event.NewFileResponse;
+import br.usp.nidaba.event.RequestEditionResponse;
+import br.usp.nidaba.event.SignUpResponse;
+import br.usp.nidaba.event.SignUpStatus;
+import br.usp.nidaba.event.UnshareResponse;
+import br.usp.nidaba.event.UpdateFileRequest;
+import br.usp.nidaba.service.EventService;
+import br.usp.nidaba.service.Session;
 import br.usp.nidaba.socket.Client;
+
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
 
 public class NidabaApplicationWindow {
 
 	private JFrame frame;
-	private JLabel editorDescricaoCriacaoLabel;
 	
-	SimpleDateFormat formatador = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-	
+	private SimpleDateFormat formatador = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+			
+	private static List<File> lstOfFiles = new LinkedList<>();
+
 	//LOGIN COMPONENTS
 	private JPanel LoginPanel;  
 	private JPanel loginLogoPanel;
@@ -72,18 +86,27 @@ public class NidabaApplicationWindow {
 	//EDITOR
 	private JPanel EditorPanel;
 	private JPanel editorDescricaoPanel;
-	private JTextPane editorTextPane;
-	private JLabel editorDescricaoArquivoLabel;
-	private JLabel editorDescricaoCriadorLabel;
-	private JLabel editorDescricaoModificacaoLabel;
-	private JList editorUsuariosList;
-	
+	private JTextArea editorTextPane;
+	private JLabel editorDescricaoArquivoLabel2;
+	private JLabel editorDescricaoCriadorLabel2;
+	private JLabel editorDescricaoCriacaoLabel2;
+	private JLabel editorDescricaoModificacaoLabel2;
+	private JButton editorCompartilharButton;
+	private JLabel editorUsuarioEditandoLabel2;
+	private JButton editorEditarButton;
 	
 	//HOME
 	JPanel HomePanel;
-	JList list;
 	private Client clientSocket;
-	
+    JTable logTabelaAlteracoes; 
+    JLabel lblNewLabel_2;
+    EventService service; 
+    
+    private List<Modificacao> modificacoes;
+    
+	private Session session;
+	JButton editorExcluitButton; 
+	JTable homeTabelaArquivos; 
 	/**
 	 * Launch the application.
 	 */
@@ -93,6 +116,7 @@ public class NidabaApplicationWindow {
 				try {
 					NidabaApplicationWindow window = new NidabaApplicationWindow();
 					window.frame.setVisible(true);
+					
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -102,9 +126,30 @@ public class NidabaApplicationWindow {
 
 	/**
 	 * Create the application.
+	 * @throws IOException 
 	 */
 	public NidabaApplicationWindow() {
 		initialize();
+		createSocketConnection();
+		this.service = new EventService(clientSocket);
+	}
+	
+
+	public void createSocketConnection()  {
+		
+		this.session = new Session();
+		this.clientSocket = new Client(this);
+		
+		try {
+			
+			this.clientSocket.initializeSocket();
+			
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+			
+		}
+		
 	}
 
 	/**
@@ -122,9 +167,10 @@ public class NidabaApplicationWindow {
 		/************************************ LOGIN *****************************************/
 		
 		LoginPanel = new JPanel();
-		LoginPanel.setBackground(SystemColor.textHighlightText);
+		LoginPanel.setBackground(SystemColor.menu);
 		frame.getContentPane().add(LoginPanel, "name_75585548540600");
 		LoginPanel.setLayout(null);
+		frame.setTitle("Login");
 		LoginPanel.setVisible(true);
 		
 		JLabel loginUsuarioLabel = new JLabel("USUÁRIO");
@@ -152,8 +198,6 @@ public class NidabaApplicationWindow {
 		
 		
 		/**************************************************************************************/
-
-		
 		/************************************ LOGIN LOGO *************************************/
 		
 		loginLogoPanel = new JPanel();
@@ -163,22 +207,33 @@ public class NidabaApplicationWindow {
 		loginLogoPanel.setLayout(null);
 		
 		JLabel lblNewLabel_3 = new JLabel("New label");
-		lblNewLabel_3.setIcon(new ImageIcon("C:\\Users\\leoco\\Desktop\\Nidaba - Resources\\Nidaba.jpg"));
-		lblNewLabel_3.setBounds(-52, 152, 318, 463);
-		loginLogoPanel.add(lblNewLabel_3);
+
+		try {
+			lblNewLabel_3.setIcon(new ImageIcon(ImageIO.read((getClass().getClassLoader().getResourceAsStream("Nidaba.jpg")))));
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		
 		JLabel label_7 = new JLabel("NIDABA");
 		label_7.setForeground(Color.WHITE);
-		label_7.setFont(new Font("Arial", Font.BOLD, 47));
-		label_7.setBounds(24, 50, 224, 125);
+		label_7.setFont(new Font("MS Gothic", Font.BOLD, 50));
+		label_7.setBounds(32, 10, 224, 125);
 		loginLogoPanel.add(label_7);
 		
-		/**************************************************************************************/
+		JLabel lblEditor = new JLabel("EDITOR");
+		lblEditor.setForeground(Color.WHITE);
+		lblEditor.setFont(new Font("MS Gothic", Font.BOLD, 47));
+		lblEditor.setBounds(32, 67, 224, 125);
+		loginLogoPanel.add(lblEditor);
+
+		lblNewLabel_3.setBounds(-37, 146, 265, 463);
+		loginLogoPanel.add(lblNewLabel_3);
 		
+		/**************************************************************************************/
 		/************************************ SIGN UP *****************************************/
 
 		SignUpPanel = new JPanel();
-		SignUpPanel.setBackground(SystemColor.textHighlightText);
+		SignUpPanel.setBackground(SystemColor.menu);
 		frame.getContentPane().add(SignUpPanel, "name_75590307492500");
 		SignUpPanel.setLayout(null);
 		SignUpPanel.setVisible(false);
@@ -211,83 +266,186 @@ public class NidabaApplicationWindow {
 		signUpPasswordField = new JPasswordField();
 		signUpPasswordField.setBounds(300, 282, 351, 38);
 		SignUpPanel.add(signUpPasswordField);
-		
+				
 		/**************************************************************************************/
-
 		/************************************ SIGN UP LOGO *************************************/
 
 		JPanel signUpLogoPanel = new JPanel();
 		signUpLogoPanel.setBackground(Color.BLACK);
 		signUpLogoPanel.setBounds(0, 0, 228, 563);
 		SignUpPanel.add(signUpLogoPanel);
+		signUpLogoPanel.setLayout(null);
 
-		/**************************************************************************************/
+		JLabel labelLogoSignUp = new JLabel("New label");
+		try {
+			labelLogoSignUp.setIcon(new ImageIcon(ImageIO.read((getClass().getClassLoader().getResourceAsStream("Nidaba.jpg")))));
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		labelLogoSignUp.setBounds(-37, 146, 265, 463);
 
+		JLabel labelTextLogo = new JLabel("NIDABA");
+		labelTextLogo.setForeground(Color.WHITE);
+		labelTextLogo.setFont(new Font("MS Gothic", Font.BOLD, 50));
+		labelTextLogo.setBounds(32, 10, 224, 125);
 		
+		JLabel lblEditor2 = new JLabel("EDITOR");
+		lblEditor2.setForeground(Color.WHITE);
+		lblEditor2.setFont(new Font("MS Gothic", Font.BOLD, 47));
+		lblEditor2.setBounds(32, 67, 224, 125);
+		
+		signUpLogoPanel.add(lblEditor2);
+	
+		signUpLogoPanel.add(labelLogoSignUp);
+		signUpLogoPanel.add(labelTextLogo);
+		/**************************************************************************************/
 		/************************************ EDITOR ******************************************/
 
 		EditorPanel = new JPanel();
-		EditorPanel.setBackground(SystemColor.controlHighlight);
+		EditorPanel.setBackground(SystemColor.menu);
 		frame.getContentPane().add(EditorPanel, "name_87723977858900");
 		EditorPanel.setLayout(null);
 		
-		editorTextPane = new JTextPane();
+
+		editorTextPane = new JTextArea();
 		editorTextPane.setBounds(10, 11, 511, 541);
-		EditorPanel.add(editorTextPane);
+		editorTextPane.setLineWrap(true);
+		editorTextPane.setWrapStyleWord(true);
+
+//		JPanel noWrapPanel = new JPanel( new BorderLayout() );
+//		noWrapPanel.add(editorTextPane);
+		editorTextPane.setEditable(false);
+		JScrollPane scrollPane2 = new JScrollPane(editorTextPane);
+		scrollPane2.setBounds(10, 11, 511, 544);
+		EditorPanel.add(scrollPane2);
 		
 		editorDescricaoPanel = new JPanel();
-		editorDescricaoPanel.setBorder(new LineBorder(Color.GRAY));
+		editorDescricaoPanel.setBackground(SystemColor.info);
+		editorDescricaoPanel.setBorder(null);
 		editorDescricaoPanel.setBounds(531, 11, 179, 111);
 		EditorPanel.add(editorDescricaoPanel);
 		editorDescricaoPanel.setLayout(null);
 		
-		editorDescricaoArquivoLabel = new JLabel("ARQUIVO:");
-		editorDescricaoArquivoLabel.setFont(new Font("Tahoma", Font.PLAIN, 10));
-		editorDescricaoArquivoLabel.setBounds(10, 11, 169, 14);
+		JLabel editorDescricaoArquivoLabel = new JLabel("  ARQUIVO ");
+		editorDescricaoArquivoLabel.setFont(new Font("Tahoma", Font.BOLD, 10));
+		editorDescricaoArquivoLabel.setBounds(32, 11, 61, 14);
 		editorDescricaoPanel.add(editorDescricaoArquivoLabel);
 		
-		editorDescricaoCriadorLabel = new JLabel("CRIADOR:");
-		editorDescricaoCriadorLabel.setFont(new Font("Tahoma", Font.PLAIN, 10));
-		editorDescricaoCriadorLabel.setBounds(10, 36, 169, 14);
+		JLabel editorDescricaoCriadorLabel = new JLabel("  CRIADOR ");
+		editorDescricaoCriadorLabel.setFont(new Font("Tahoma", Font.BOLD, 10));
+		editorDescricaoCriadorLabel.setBounds(32, 36, 61, 14);
 		editorDescricaoPanel.add(editorDescricaoCriadorLabel);
 		
-		editorDescricaoCriacaoLabel = new JLabel("CRIAÇÃO");
-		editorDescricaoCriacaoLabel.setFont(new Font("Tahoma", Font.PLAIN, 10));
-		editorDescricaoCriacaoLabel.setBounds(10, 61, 169, 14);
+		JLabel editorDescricaoCriacaoLabel = new JLabel("  CRIAÇÃO");
+		editorDescricaoCriacaoLabel.setFont(new Font("Tahoma", Font.BOLD, 10));
+		editorDescricaoCriacaoLabel.setBounds(32, 61, 61, 14);
 		editorDescricaoPanel.add(editorDescricaoCriacaoLabel);
 		
-		editorDescricaoModificacaoLabel = new JLabel("MODIFICAÇÃO:");
-		editorDescricaoModificacaoLabel.setFont(new Font("Tahoma", Font.PLAIN, 10));
-		editorDescricaoModificacaoLabel.setBounds(10, 86, 169, 14);
+		JLabel editorDescricaoModificacaoLabel = new JLabel("MODIFICAÇÃO");
+		editorDescricaoModificacaoLabel.setFont(new Font("Tahoma", Font.BOLD, 10));
+		editorDescricaoModificacaoLabel.setBounds(10, 86, 87, 14);
 		editorDescricaoPanel.add(editorDescricaoModificacaoLabel);
-
-		editorUsuariosList = new JList();
-		editorUsuariosList.setBorder(new LineBorder(Color.GRAY));
-		editorUsuariosList.setBounds(531, 423, 179, 79);
-		EditorPanel.add(editorUsuariosList);
 		
-		JLabel editorUsuarioEditandoLabel = new JLabel("USUÁRIOS EDITANDO");
-		editorUsuarioEditandoLabel.setForeground(SystemColor.textHighlight);
+		editorDescricaoModificacaoLabel2 = new JLabel("");
+		editorDescricaoModificacaoLabel2.setFont(new Font("Tahoma", Font.PLAIN, 10));
+		editorDescricaoModificacaoLabel2.setBounds(92, 86, 80, 14);
+		editorDescricaoPanel.add(editorDescricaoModificacaoLabel2);
+		
+		editorDescricaoCriacaoLabel2 = new JLabel("");
+		editorDescricaoCriacaoLabel2.setFont(new Font("Tahoma", Font.PLAIN, 10));
+		editorDescricaoCriacaoLabel2.setBounds(92, 61, 87, 14);
+		editorDescricaoPanel.add(editorDescricaoCriacaoLabel2);
+		
+		editorDescricaoCriadorLabel2 = new JLabel("");
+		editorDescricaoCriadorLabel2.setFont(new Font("Tahoma", Font.PLAIN, 10));
+		editorDescricaoCriadorLabel2.setBounds(92, 36, 87, 14);
+		editorDescricaoPanel.add(editorDescricaoCriadorLabel2);
+		
+		editorDescricaoArquivoLabel2 = new JLabel("");
+		editorDescricaoArquivoLabel2.setFont(new Font("Tahoma", Font.PLAIN, 10));
+		editorDescricaoArquivoLabel2.setBounds(92, 11, 87, 14);
+		editorDescricaoPanel.add(editorDescricaoArquivoLabel2);
+		
+		JLabel editorUsuarioEditandoLabel = new JLabel("USUÁRIO EDITANDO");
+		editorUsuarioEditandoLabel.setForeground(Color.DARK_GRAY);
 		editorUsuarioEditandoLabel.setFont(new Font("Tahoma", Font.BOLD, 11));
-		editorUsuarioEditandoLabel.setBounds(531, 403, 135, 14);
+		editorUsuarioEditandoLabel.setBounds(565, 440, 145, 14);
 		EditorPanel.add(editorUsuarioEditandoLabel);
 		
 		/**************************************************************************************/
+		/************************************ LOG ******************************************/
+
+		JPanel LogPanel = new JPanel();
+		LogPanel.setBackground(SystemColor.menu);
+		frame.getContentPane().add(LogPanel, "name_259201955106400");
+		LogPanel.setLayout(null);
+
+		String[][] data = {};
+	    String[] columnNames = { "Data", "Reponsável"}; 
+	    logTabelaAlteracoes = new JTable(data, columnNames); 
+	    logTabelaAlteracoes.setBackground(SystemColor.text);
+
+	    logTabelaAlteracoes.setBounds(405, 72, 270, 409);
+
+	    JScrollPane logTabelaScrollPane = new JScrollPane(logTabelaAlteracoes); 
+	    logTabelaScrollPane.setBounds(405, 11, 294, 455);
+	    LogPanel.add(logTabelaScrollPane);
+        JTableHeader header2 = logTabelaAlteracoes.getTableHeader();
+        header2.setBackground(Color.WHITE); 
+	    logTabelaScrollPane.getViewport().setBackground(Color.WHITE);
+
+	    
+	    JTextArea logTextPane = new JTextArea();
+	    logTextPane.setBounds(38, 72, 344, 409);
+	    logTextPane.setEditable(false);
+	    logTextPane.setLineWrap(true);
+	    logTextPane.setWrapStyleWord(true);
+
+	    JScrollPane logTextPaneScrollPane = new JScrollPane(logTextPane); 
+	    logTextPaneScrollPane.setBounds(10, 11, 385, 541);
+	    LogPanel.add(logTextPaneScrollPane);
+		
+		/**************************************************************************************/
+
 
 		/* BOTAO SIGN UP CADASTRAR  */
 
 		Button signUpCadastrarButton = new Button("CADASTRAR");
+		signUpCadastrarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				if(validarCadastro())
+					service.realizarCadastro(signUpUsuarioTextField.getText(), signUpEmailTextField.getText(), new String(signUpPasswordField.getPassword()));
+			}
+		});
 		signUpCadastrarButton.setForeground(Color.WHITE);
 		signUpCadastrarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
 		signUpCadastrarButton.setBackground(new Color(241, 57, 83));
 		signUpCadastrarButton.setBounds(300, 336, 351, 45);
 		SignUpPanel.add(signUpCadastrarButton);
+		
+		Button signUpVoltarButton = new Button("VOLTAR");
+		signUpVoltarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SignUpPanel.setVisible(false);
+				frame.setTitle("Login");
+				LoginPanel.setVisible(true);
+			}
+		});
+		signUpVoltarButton.setForeground(Color.WHITE);
+		signUpVoltarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		signUpVoltarButton.setBackground(SystemColor.windowBorder);
+		signUpVoltarButton.setBounds(408, 403, 122, 38);
+		SignUpPanel.add(signUpVoltarButton);
 
 		/* BOTAO LOGIN CADASTRAR */
 
 		Button loginCadastrarButton = new Button("CADASTRAR");
 		loginCadastrarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				frame.setTitle("Cadastro");
+				signUpUsuarioLabel.setText("");
+				signUpPasswordField.setText("");
+				signUpEmailTextField.setText("");
 				SignUpPanel.setVisible(true);
 				LoginPanel.setVisible(false);
 			}
@@ -298,28 +456,7 @@ public class NidabaApplicationWindow {
 		loginCadastrarButton.setBounds(297, 332, 168, 45);
 		LoginPanel.add(loginCadastrarButton);
 		
-		
-		
-		
-		JButton editorCriarButton = new JButton("CRIAR");
-		editorCriarButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-		          String name = JOptionPane.showInputDialog(EditorPanel,
-	                        "Insira o nome do arquivo", null);
-		          if(name != null) {
-			          try {
-							criarNovoArquivoUpload(editorTextPane.getText(), name);
-						} catch (IOException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-					}
-
-		          }
-		});
-		editorCriarButton.setBackground(new Color(160, 160, 160));
-		editorCriarButton.setBounds(531, 133, 179, 34);
-		EditorPanel.add(editorCriarButton);
+	
 		
 		Button loginEsqueciSenhaButton = new Button("ESQUECI A SENHA");
 		loginEsqueciSenhaButton.setForeground(Color.WHITE);
@@ -330,13 +467,19 @@ public class NidabaApplicationWindow {
 		
 		
 		
-		JButton editorUnshareButton = new JButton("PARAR COMPARTILHAMENTO");
+		JButton editorUnshareButton = new JButton("REMOVER ACESSO");
+		editorUnshareButton.setFont(new Font("Tahoma", Font.BOLD, 11));
 		editorUnshareButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				
+				String username = JOptionPane.showInputDialog(EditorPanel,
+                        "Insira o usuário que você deseja remover o acesso", null); 
+				service.pararCompartilharArquivo(username, session.getDocumentID());
+				
 			}
 		});
 		editorUnshareButton.setBackground(SystemColor.window);
-		editorUnshareButton.setBounds(531, 313, 179, 34);
+		editorUnshareButton.setBounds(531, 325, 179, 34);
 		EditorPanel.add(editorUnshareButton);
 		
 		JButton editorExportarButton = new JButton("EXPORTAR");
@@ -346,21 +489,22 @@ public class NidabaApplicationWindow {
 			}
 		});
 		editorExportarButton.setBackground(SystemColor.window);
-		editorExportarButton.setBounds(531, 223, 179, 34);
+		editorExportarButton.setBounds(531, 248, 179, 34);
 		EditorPanel.add(editorExportarButton);
 		
-		JButton editorUploadButton = new JButton("UPLOAD");
+		JButton editorUploadButton = new JButton("UPLOAD NOVO ARQUIVO");
 		editorUploadButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				final JFileChooser fc = new JFileChooser();
 		        int returnValue = fc.showOpenDialog(null);
 				if (returnValue == JFileChooser.APPROVE_OPTION) {
 					java.io.File selectedFile = fc.getSelectedFile();
+					String contextAsString;
 					try {
-						String contextAsString = FileUtils.readFileToString(selectedFile, StandardCharsets.UTF_8);
-						criarNovoArquivoUpload(contextAsString, selectedFile.getName());
+						contextAsString = FileUtils.readFileToString(selectedFile, StandardCharsets.UTF_8);
+						service.criarNovoArquivoUpload(contextAsString, selectedFile.getName(), session.getClientUsername());
+
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 
@@ -369,27 +513,30 @@ public class NidabaApplicationWindow {
 
 		});
 		editorUploadButton.setBackground(SystemColor.window);
-		editorUploadButton.setBounds(531, 178, 179, 34);
+		editorUploadButton.setBounds(531, 209, 179, 34);
 		EditorPanel.add(editorUploadButton);
 		
-		JButton editorCompartilharButton = new JButton("COMPARTILHAR");
+		
+		
+		editorCompartilharButton = new JButton("COMPARTILHAR");
+		editorCompartilharButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				
+				String username = JOptionPane.showInputDialog(EditorPanel,
+                        "Insira o usuário com o qual você deseja compartilhar o arquivo", null); 
+				service.compartilharArquivo(username, session.getDocumentID());
+				
+			}
+		});
 		editorCompartilharButton.setBackground(SystemColor.window);
-		editorCompartilharButton.setBounds(531, 268, 179, 34);
+		editorCompartilharButton.setBounds(531, 287, 179, 34);
 		EditorPanel.add(editorCompartilharButton);
 		
 		
-		Button loginEntrarButton = new Button("LOGIN");
+		Button loginEntrarButton = new Button("ENTRAR");
 		loginEntrarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				try {
-					realizarLogin();
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				//senhaIncorreta();
-//				EditorPanel.setVisible(true);
-//				LoginPanel.setVisible(false);
+				service.realizarLogin(loginUsuarioTextField.getText(), new String(loginSenhaTextField.getPassword()));
 			}
 		});
 		loginEntrarButton.setForeground(Color.WHITE);
@@ -399,90 +546,401 @@ public class NidabaApplicationWindow {
 		LoginPanel.add(loginEntrarButton);
 				
 		
-		JButton editorExcluitButton = new JButton("EXCLUIR");
-		editorExcluitButton.setBackground(Color.WHITE);
-		editorExcluitButton.setBounds(531, 358, 179, 34);
-		EditorPanel.add(editorExcluitButton);
-		
-		JButton editorVoltarButton = new JButton("VOLTAR");
-		editorVoltarButton.addActionListener(new ActionListener() {
+		editorExcluitButton = new JButton("EXCLUIR");
+		editorExcluitButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-			}
-		});
-		editorVoltarButton.setBackground(Color.WHITE);
-		editorVoltarButton.setBounds(585, 513, 77, 34);
-		EditorPanel.add(editorVoltarButton);
-		
-		
-		HomePanel = new JPanel();
-		frame.getContentPane().add(HomePanel, "name_148599297405900");
-		HomePanel.setLayout(null);
-		
-		String week[]= { "Monday","Tuesday","Wednesday", 
-                "Thursday","Friday","Saturday","Sunday"}; 
-		
-		list = new JList(week);
-		list.setBounds(398, 28, 297, 484);
-		HomePanel.add(list);
-		
-		JButton homeNovoArquivoButton = new JButton("NOVO ARQUIVO");
-		homeNovoArquivoButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EditorPanel.setVisible(true);
-				HomePanel.setVisible(false);
-			}
-		});
-		homeNovoArquivoButton.setBounds(548, 523, 147, 29);
-		HomePanel.add(homeNovoArquivoButton);
-		
-		JButton homeAbrirButton = new JButton("ABRIR");
-		homeAbrirButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String selectedFile = list.getSelectedValue().toString();
-				System.out.println(selectedFile);
-			}
-		});
-		homeAbrirButton.setBounds(398, 523, 147, 29);
-		HomePanel.add(homeAbrirButton);
-		
-		loginEsqueciSenhaButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-//				PasswordRecovery passwordRecovery = new PasswordRecovery();
-//				passwordRecovery.setLocationRelativeTo(LoginPanel);
-//				passwordRecovery.setVisible(true);
-				LoginPanel.setVisible(false);
-				HomePanel.setVisible(true);
+				
+				if (editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
+					
+					service.removerArquivo(new DeleteRequest(session.getDocumentID()));
+				}
 				
 			}
 		});
+		editorExcluitButton.setBackground(Color.WHITE);
+		editorExcluitButton.setBounds(531, 365, 179, 34);
+		EditorPanel.add(editorExcluitButton);
 		
-	}
-	
-	public void realizarLogin() throws IOException { 
-		
-		Event event = new Event(EventType.LOGIN, new LoginRequest(loginUsuarioTextField.getText(), new String(loginSenhaTextField.getPassword())));
-		clientSocket = new Client(this);
-		clientSocket.initializeSocket();
-		clientSocket.sendEvent(event);
-		
-	}
-	
+		editorUsuarioEditandoLabel2 = new JLabel("");
+		editorUsuarioEditandoLabel2.setOpaque(true);
+		editorUsuarioEditandoLabel2.setBackground(SystemColor.info);
+		editorUsuarioEditandoLabel2.setBounds(531, 455, 179, 23);
+		EditorPanel.add(editorUsuarioEditandoLabel2);
 
-	private void criarNovoArquivoUpload(String contentAsString, String fileName) throws IOException {
-		NewFileRequest newFileRequest = new NewFileRequest(fileName, loginUsuarioTextField.getText(), contentAsString);
-		Event event = new Event(EventType.NEWFILE, newFileRequest);
-		clientSocket.sendEvent(event);
+		
+		JButton editorVoltarButton = new JButton("VOLTAR");
+		editorVoltarButton.setFont(new Font("Tahoma", Font.BOLD, 9));
+		editorVoltarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				EditorPanel.setVisible(false);
+				frame.setTitle("Home");
+				HomePanel.setVisible(true);
+				if (editorEditarButton.getText().equalsIgnoreCase("LIBERAR EDIÇÃO")) {
+					service.enviarEventoEdicao(false);
+					editorEditarButton.setText("EDITAR");
+					editorEditarButton.setBackground(new Color(46, 139, 87));
+					editorUsuarioEditandoLabel2.setText("");
+				}
+				obterListaArquivos();
+			}
+		});
+		editorVoltarButton.setBackground(Color.WHITE);
+		editorVoltarButton.setBounds(562, 521, 121, 34);
+		EditorPanel.add(editorVoltarButton);
+		
+		
+		JButton editorSalvarButton = new JButton("SALVAR");
+		editorSalvarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				service.enviarUpdate(new UpdateFileRequest(session.getDocumentID(), editorTextPane.getText()));
+			}
+		});
+		editorSalvarButton.setBackground(Color.WHITE);
+		editorSalvarButton.setBounds(531, 133, 179, 34);
+		EditorPanel.add(editorSalvarButton);
+		
+
+		
+		editorEditarButton = new JButton("EDITAR");
+		editorEditarButton.setFont(new Font("Tahoma", Font.BOLD, 11));
+		editorEditarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				
+				if (editorEditarButton.getText().equalsIgnoreCase("EDITAR")) {
+					editorSalvarButton.setEnabled(true);
+					editorTextPane.setEditable(true);
+					editorEditarButton.setBackground(Color.ORANGE);
+					editorEditarButton.setText("LIBERAR EDIÇÃO");
+					service.enviarEventoEdicao(true);
+					editorUsuarioEditandoLabel2.setText(session.getClientUsername());
+				} else if(editorEditarButton.getText().equalsIgnoreCase("LIBERAR EDIÇÃO")) {
+					editorSalvarButton.setEnabled(false);
+					editorTextPane.setEditable(false);
+					editorEditarButton.setBackground(new Color(46, 139, 87));
+					editorEditarButton.setText("EDITAR");
+					service.enviarEventoEdicao(false);
+					editorUsuarioEditandoLabel2.setText("");
+
+				} else {	
+				     int opcao = JOptionPane.showConfirmDialog(EditorPanel, "Deseja enviar uma solicitação para o usuário ".concat(editorUsuarioEditandoLabel2.getText()).concat(" ?"), null, JOptionPane.YES_NO_OPTION);
+				     if(opcao == JOptionPane.YES_OPTION) {
+				    	 service.enviarEventoSolicitacaoEdicao(session.getDocumentID(), session.getClientUsername());
+				     }
+				}
+			}
+
+
+		});
+		editorEditarButton.setForeground(Color.WHITE);
+		editorEditarButton.setBackground(new Color(46, 139, 87));
+		editorEditarButton.setBounds(531, 403, 179, 34);
+		EditorPanel.add(editorEditarButton);
+				
+		HomePanel = new JPanel();
+		frame.getContentPane().add(HomePanel, "name_148599297405900");
+		HomePanel.setLayout(null);
+		HomePanel.setBackground(SystemColor.menu);
+
+		JButton homeNovoArquivoButton = new JButton("NOVO ARQUIVO");
+		homeNovoArquivoButton.setBackground(SystemColor.window);
+		homeNovoArquivoButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				apagaCamposEditor();
+				session.setDocumentID(null);
+				editorSalvarButton.setEnabled(false);
+				frame.setTitle("Editor - "+editorDescricaoArquivoLabel2.getText());
+				EditorPanel.setVisible(true);
+				if (!editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
+					editorExcluitButton.setEnabled(false);
+				} else {
+					editorExcluitButton.setEnabled(true);
+				}
+				HomePanel.setVisible(false);
+			}
+		});
+		homeNovoArquivoButton.setBounds(516, 516, 171, 36);
+		HomePanel.add(homeNovoArquivoButton);
+		
+		JButton homeAbrirButton = new JButton("ABRIR");
+		homeAbrirButton.setBackground(SystemColor.window);
+		homeAbrirButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+
+				editorSalvarButton.setEnabled(false);
+				int valor = homeTabelaArquivos.getSelectedRow();
+				String name = (String) homeTabelaArquivos.getValueAt(valor , 0);
+				String username = (String) homeTabelaArquivos.getValueAt(valor , 1);
+				String date = (String) homeTabelaArquivos.getValueAt(valor , 2);
+				
+				obterArquivo(name, username, date);
+				
+			}
+
+		});
+		homeAbrirButton.setBounds(321, 516, 171, 36);
+		HomePanel.add(homeAbrirButton);
+		
+		  String[][] data2 = {};
+	        String[] columnNames2 = { "Nome", "Data", "Criador"}; 
+	         homeTabelaArquivos = new JTable(data2, columnNames2);
+	         homeTabelaArquivos.setDefaultEditor(Object.class, null);
+	         homeTabelaArquivos.setShowHorizontalLines(false);
+	         homeTabelaArquivos.setShowVerticalLines(false);
+	         JTableHeader header = homeTabelaArquivos.getTableHeader();
+	         header.setBackground(Color.WHITE); 		
+	         JScrollPane homeTabelArquivosScrollPane = new JScrollPane(homeTabelaArquivos);
+		homeTabelArquivosScrollPane.setBounds(311, 21, 384, 484);
+		HomePanel.add(homeTabelArquivosScrollPane);
+		homeTabelArquivosScrollPane.getViewport().setBackground(Color.WHITE);
+
+		
+		JLabel lblNewLabel = new JLabel("");
+		lblNewLabel.setBackground(SystemColor.controlHighlight);
+		lblNewLabel.setBounds(302, 11, 400, 501);
+		lblNewLabel.setOpaque(true);
+		HomePanel.add(lblNewLabel);		
+		
+		JLabel lblNewLabel_1 = new JLabel("•");
+		lblNewLabel_1.setForeground(new Color(241, 57, 83));
+		lblNewLabel_1.setBounds(143, 177, 18, 74);
+		HomePanel.add(lblNewLabel_1);
+		lblNewLabel_1.setFont(new Font("Tahoma", Font.PLAIN, 35));
+		
+		JPanel recadoPanel = new JPanel();
+		recadoPanel.setBackground(Color.ORANGE);
+		recadoPanel.setBounds(10, 191, 279, 223);
+		HomePanel.add(recadoPanel);
+		recadoPanel.setLayout(null);
+		
+		lblNewLabel_2 = new JLabel("New label");
+		lblNewLabel_2.setFont(new Font("Tahoma", Font.PLAIN, 12));
+
+		lblNewLabel_2.setBounds(10, 38, 259, 174);
+		recadoPanel.add(lblNewLabel_2);
+		
+			JButton logVisualizarTextButton = new JButton("VISUALIZAR TEXTO");
+			logVisualizarTextButton.setBackground(SystemColor.window);
+			logVisualizarTextButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent arg0) {
+					int valor = logTabelaAlteracoes.getSelectedRow();
+					String data = (String) logTabelaAlteracoes.getValueAt(valor , 0);
+					String autor = (String) logTabelaAlteracoes.getValueAt(valor , 1);
+					String conteudo ="";
+					for (Modificacao m : modificacoes) {
+						if (formatador.format(m.getDataMoficacao()).equals(data) && m.getUsuario().equalsIgnoreCase(autor)) {
+							conteudo = m.getSnapShot();
+						}
+					}
+					logTextPane.setText(conteudo);
+
+				}
+			});
+			
+			frame.addWindowListener(new java.awt.event.WindowAdapter() {
+			    @Override
+			    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+			    	
+			    	if (editorEditarButton.getText().equals("LIBERAR EDIÇÃO")) {
+			    		
+			    		service.enviarEventoEdicao(false);
+			    		
+			    	}
+			  
+			    }
+			});
+			logVisualizarTextButton.setBounds(405, 477, 294, 32);
+			LogPanel.add(logVisualizarTextButton);
+			
+			JButton logVoltarButton = new JButton("VOLTAR");
+			logVoltarButton.setBackground(SystemColor.window);
+			logVoltarButton.addActionListener(new ActionListener() {
+				
+				public void actionPerformed(ActionEvent e) {
+					logTextPane.setText("");
+					frame.setTitle("Editor - "+editorDescricaoArquivoLabel2.getText());
+					EditorPanel.setVisible(true);
+					if (!editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
+						editorExcluitButton.setEnabled(false);
+					} else {
+						editorExcluitButton.setEnabled(true);
+					}
+					LogPanel.setVisible(false);
+				}
+			});
+			logVoltarButton.setBounds(559, 520, 140, 32);
+			LogPanel.add(logVoltarButton);
+			
+			JButton logExportarButton = new JButton("EXPORTAR");
+			logExportarButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent arg0) {
+					String desktopPath = System.getProperty("user.home") + "\\Desktop\\"+editorDescricaoArquivoLabel2.getText().substring(editorDescricaoArquivoLabel2.getText().indexOf(" ")+1, editorDescricaoArquivoLabel2.getText().length());
+				    try {
+						BufferedWriter writer = new BufferedWriter(new FileWriter(desktopPath));
+						writer.write(logTextPane.getText());
+						writer.close();
+					} catch (IOException e) {
+						JOptionPane.showMessageDialog(LogPanel, "O arquivo possuí caracteres inválidos");
+						e.printStackTrace();
+					}
+
+				}
+			});
+			logExportarButton.setBackground(SystemColor.window);
+			logExportarButton.setBounds(405, 520, 144, 32);
+			LogPanel.add(logExportarButton);
+			
+			
+		JButton editorLogButton = new JButton("LOG");
+		editorLogButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				frame.setTitle("Modificações - "+editorDescricaoArquivoLabel2.getText());
+				LogPanel.setVisible(true);
+				EditorPanel.setVisible(false);
+			}
+		});
+		editorLogButton.setFont(new Font("Tahoma", Font.BOLD, 11));
+		editorLogButton.setBackground(Color.WHITE);
+		editorLogButton.setBounds(530, 480, 180, 27);
+		EditorPanel.add(editorLogButton);
+		
+		
+		loginEsqueciSenhaButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+		          String email = JOptionPane.showInputDialog(LoginPanel,
+	                        "Insira o seu e-mail", null);
+		          if(email != null) {
+		        	  JOptionPane.showMessageDialog(LoginPanel, "Você receberá a senha no seu e-mail caso ele esteja cadastrado");
+		        	  service.enviarEmailSenha(email);
+				}
+			}
+		});
+		
+		JButton editorCriarButton = new JButton("SALVAR COMO");
+		editorCriarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				
+		          String name = JOptionPane.showInputDialog(EditorPanel,
+	                        "Insira o nome do arquivo", null);
+		          if(name != null) {
+			          if(!(name.contains(".TXT") || name.contains(".txt"))) {
+						  name = name.concat(".txt");
+					  }
+						editorSalvarButton.setEnabled(false);
+						editorTextPane.setEditable(false);
+						editorEditarButton.setBackground(new Color(46, 139, 87));
+						editorEditarButton.setText("EDITAR");
+						service.enviarEventoEdicao(false);
+
+						service.criarNovoArquivoUpload(editorTextPane.getText(), name, session.getClientUsername());
+					}
+
+		          }
+		});
+		editorCriarButton.setBackground(Color.WHITE);
+		editorCriarButton.setBounds(531, 171, 179, 34);
+		EditorPanel.add(editorCriarButton);
+		
 	}
 	
-	public void realizarCadastro() { 
-		Event event = new Event(EventType.LOGIN, new LoginRequest(loginUsuarioTextField.getText(), new String(loginSenhaTextField.getPassword())));
-
+	
+	private boolean validarCadastro() {
+		
+		boolean ehValido = true;
+		
+		if (signUpUsuarioTextField.getText() == null || signUpUsuarioTextField.getText().equals("")) { 
+			signUpUsuarioTextField.setOpaque(true);
+			signUpUsuarioTextField.setBackground(Color.RED);
+			ehValido = false;
+		}  else {
+			signUpUsuarioTextField.setOpaque(false);
+		}
+		
+		if (signUpPasswordField.getPassword() == null || new String(signUpPasswordField.getPassword()).equalsIgnoreCase("")) { 
+			signUpPasswordField.setOpaque(true);
+			signUpPasswordField.setBackground(Color.RED);
+			ehValido = false;
+		} else {
+			signUpPasswordField.setOpaque(false);
+		}
+		
+		if (signUpEmailTextField.getText() == null || signUpEmailTextField.getText().equals("")) {
+			signUpEmailTextField.setOpaque(true);
+			signUpEmailTextField.setBackground(Color.RED);
+			ehValido = false;
+		} else {
+			signUpEmailTextField.setOpaque(false);
+		}
+		
+		if (!ehValido)
+			JOptionPane.showMessageDialog(SignUpPanel, "Por favor, preencha os campos destacados em vermelho!", "Atenção", JOptionPane.ERROR_MESSAGE);
+		
+		return ehValido;
+	}
+	
+	public void recebeEventos(Event eventoRecebido) {
+		
+		if (eventoRecebido == null)
+			return;
+		
+		EventType eventType = eventoRecebido.getEventType();
+				
+		switch (eventType) {
+		
+		case LOGIN :
+			processarLogin(eventoRecebido);
+			break;
+			
+		case NEWFILE:
+			processarNewFile(eventoRecebido);
+			break;
+		
+		case HOME:
+			processarHome(eventoRecebido);
+			break;
+			
+		case EDITOR:
+			processarEditor(eventoRecebido);
+			break;
+			
+		case UPDATEFILE:
+			processarUpdate(eventoRecebido);
+			break;
+		
+		case EDITING: 
+			processarEditing(eventoRecebido);
+			break;
+		
+		case UNSHARE:
+			processarUnshareFile(eventoRecebido);
+			break;
+		
+		case SHARE:
+			processarShareFile();
+			break;
+			
+		case REGISTER:
+			processarRegistrar(eventoRecebido);
+			break;	
+			
+		case REQUEST_EDITION:
+			processarRequestEdition(eventoRecebido);
+			break;
+			
+		case DELETE:
+			processarDelete(eventoRecebido);
+			break;
+			
+		default:
+			//DO NOTHING
+			break;
+		}
+		
 	}
 	
 	public void senhaIncorreta () {
 		
 		loginSenhaIncorretaLabel.setOpaque(true);
-		loginSenhaIncorretaLabel.setText("SENHA INCORRETA!");
+		loginSenhaIncorretaLabel.setText("USUÁRIO E/OU SENHA INCORRETA!");
 		loginSenhaIncorretaLabel.setHorizontalAlignment(SwingConstants.CENTER);
 		loginSenhaIncorretaLabel.setVerticalAlignment(SwingConstants.CENTER);
 		loginSenhaIncorretaLabel.setBackground(Color.RED);
@@ -490,70 +948,290 @@ public class NidabaApplicationWindow {
 		loginSenhaIncorretaLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
 	}
-	
-	public void recebeEventos(Event eventoRecebido) throws IOException {
-		
-		EventType eventType = eventoRecebido.getEventType();
-		
-		switch (eventType) {
-		
-		case LOGIN :
-			
-			LoginResponse loginResponse = (LoginResponse) eventoRecebido.getContent();
-			
-			if (loginResponse.getLoginStatus() == LoginStatus.NOTALLOWED) {
-				
-//				clientSocket.closeSocketConnection();
-				senhaIncorreta();
-				
-			} else {
-				
-				
-				obterListaArquivos();
-				HomePanel.setVisible(true);
-				LoginPanel.setVisible(false);
-				
-			}
-			break;
-		case NEWFILE:
-				NewFileResponse newFileResponse = (NewFileResponse) eventoRecebido.getContent();
-				editorTextPane.setText(newFileResponse.getFile().getContent());
-				editorDescricaoArquivoLabel.setText("ARQUIVO: "+newFileResponse.getFile().getName());
-				editorDescricaoCriadorLabel.setText("CRIADOR: "+newFileResponse.getFile().getOwner());
-				editorDescricaoCriacaoLabel.setText("CRIAÇÃO: "+newFileResponse.getFile().getCreationDate());
-				editorDescricaoModificacaoLabel.setText("MODIFICAÇÃO: "+newFileResponse.getFile().getCreationDate());
 
-				break;
+	public void processarHome(Event e) { 
 		
-		case HOME:
-			HomeResponse homeResponse = (HomeResponse) eventoRecebido.getContent();
-			Map<String, Integer> map = new HashMap<>();
-			for (File file : homeResponse.getListOfFiles()) {
-				map.put(String.format("%s - %s - %s", file.getName(), file.getOwner(), formatador.format(file.getCreationDate())), file.getId());
-			}			
-			Object[] files =  map.keySet().toArray();
-			Arrays.sort(files);
-			list.setListData(files);
+		lblNewLabel_2.setText(String.format("<html>Bem vindo, %s <br/><br/>"
+				+ "Caso você tenha alguma dúvida, por favor, entre em contato com a equipe desenvolvedora.<br/><br/>"
+				+ "Leonardo Negri 		<br/>      lcnegri@usp.br<br/>"
+				+ "Lucas Tamaribuchi	<br/>      lutamaribuchi@usp.br<br/>"
+				+ "Paulo Oliveira		<br/>      paulo.rogerio.oliveira@usp.br</html>", session.getClientUsername()));
+
+		
+		HomeResponse homeResponse = (HomeResponse) e.getContent();
+		
+		lstOfFiles = homeResponse.getListOfFiles();
+		
+		int row = 0;
+
+		Object[][] rows = new Object[homeResponse.getListOfFiles().size()][3];
+		Object[]columns = new Object[] {"Nome","Autor", "Data Criação"};
+
+		for (File m : homeResponse.getListOfFiles()) { 
+			rows[row][0] = m.getName();
+			rows[row][1] = m.getOwner();
+			rows[row][2] = formatador.format(m.getCreationDate());
+			row++;
 		}
 		
+		homeTabelaArquivos.setModel(new DefaultTableModel(rows,columns));
+
 	}
 	
+	
+	public void processarEditor(Event e) {
+		EditorResponse editorResponse = (EditorResponse) e.getContent();
+		editorTextPane.setText(editorResponse.getFile().getContent());
+		editorDescricaoArquivoLabel2.setText(editorResponse.getFile().getName());
+		editorDescricaoCriadorLabel2.setText(editorResponse.getFile().getOwner());
+		editorDescricaoCriacaoLabel2.setText(formatador.format(editorResponse.getFile().getCreationDate()));
+		
+		if (editorResponse.getModificacoes() != null && !editorResponse.getModificacoes().isEmpty()) {
+			editorDescricaoModificacaoLabel2.setText(formatador.format(editorResponse.getModificacoes().get(editorResponse.getModificacoes().size() - 1).getDataMoficacao()));
+		} else {
+			editorDescricaoModificacaoLabel2.setText(formatador.format(editorResponse.getFile().getCreationDate()));
+
+		}
+		
+		if (editorResponse.getUserdEditing() == null) {
+			
+			editorEditarButton.setBackground(new Color(46, 139, 87));
+			editorEditarButton.setText("EDITAR");
+			
+		} else {
+			
+			editorEditarButton.setBackground(Color.RED);
+			editorEditarButton.setText("SOLICITAR EDIÇÃO");
+			editorUsuarioEditandoLabel2.setText(editorResponse.getUserdEditing());
+		}
+		frame.setTitle("Editor - "+editorDescricaoArquivoLabel2.getText());
+		EditorPanel.setVisible(true);
+		if (!editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
+			editorExcluitButton.setEnabled(false);
+		} else {
+			editorExcluitButton.setEnabled(true);
+		}
+		HomePanel.setVisible(false);
+		frame.setTitle(String.format("Editor - %s", editorResponse.getFile().getName())); 
+		session.setDocumentID(editorResponse.getFile().getId());
+		
+		modificacoes = editorResponse.getModificacoes();
+		atualizarLogModificacoes();
+
+	}
+	
+	public void processarUpdate(Event e) {
+		
+		EditorResponse er = (EditorResponse) e.getContent();
+		editorTextPane.setText(er.getFile().getContent());
+		if (er.getModificacoes() != null && !er.getModificacoes().isEmpty()) {
+			editorDescricaoModificacaoLabel2.setText(formatador.format(er.getModificacoes().get(er.getModificacoes().size() - 1).getDataMoficacao()));
+		}
+		modificacoes = er.getModificacoes();
+		atualizarLogModificacoes();
+
+	}
+	
+	
+	
+	public void atualizarLogModificacoes() {
+		
+		int linha = 0;
+
+		Object[][] valores = new Object[modificacoes.size()][2];
+		Object[]header = new Object[] {"Data","Autor"};
+
+		for (Modificacao m :modificacoes) { 
+			valores[linha][0] = formatador.format(m.getDataMoficacao());
+			valores[linha][1] = m.getUsuario();
+			linha++;
+		}
+		
+		logTabelaAlteracoes.setModel(new DefaultTableModel(valores,header));
+
+	}
+	
+	public void processarUnshareFile(Event e) { 
+		UnshareResponse ur = (UnshareResponse) e.getContent();
+		
+		if ((EditorPanel.isVisible() && session.getDocumentID().intValue() == ur.getFileID().intValue()) || HomePanel.isVisible()) {
+			
+			session.setDocumentID(null);
+			
+			if (EditorPanel.isVisible()) {
+				
+				JOptionPane.showMessageDialog(EditorPanel, "O seu acesso ao arquivo "+editorDescricaoArquivoLabel2.getText()+" foi revogado");
+				frame.setTitle("Home");
+				HomePanel.setVisible(true);
+				EditorPanel.setVisible(false);
+				
+				if (editorEditarButton.getText().equals("LIBERAR EDIÇÃO"))
+					service.enviarEventoEdicao(false);
+				
+			}
+			
+			obterListaArquivos();
+
+		}
+	}
+		
+	public void processarShareFile() {
+		if ( HomePanel.isVisible() ) {
+			obterListaArquivos();
+		}
+	}
+	
+	
+	
+	public void processarNewFile(Event e) {
+		NewFileResponse newFileResponse = (NewFileResponse) e.getContent();
+		editorTextPane.setText(newFileResponse.getFile().getContent());
+		editorDescricaoArquivoLabel2.setText(newFileResponse.getFile().getName());
+		editorDescricaoCriadorLabel2.setText(newFileResponse.getFile().getOwner());
+		editorDescricaoCriacaoLabel2.setText(formatador.format(newFileResponse.getFile().getCreationDate()));
+		editorDescricaoModificacaoLabel2.setText(formatador.format(newFileResponse.getFile().getCreationDate()));
+		session.setDocumentID(newFileResponse.getFile().getId());
+		editorEditarButton.setBackground(new Color(46, 139, 87));
+		editorEditarButton.setText("EDITAR");
+		editorUsuarioEditandoLabel2.setText("");
+		editorTextPane.setEditable(false);
+		modificacoes = new LinkedList<>();
+		atualizarLogModificacoes();
+	}
+	
+	
+	public void processarRegistrar(Event e) {
+		SignUpResponse signUpResponse = (SignUpResponse) e.getContent();
+		SignUpStatus status = signUpResponse.getSignUpStatus();
+		
+		switch (status) {
+		
+		case SUCCESS:
+			JOptionPane.showMessageDialog(SignUpPanel, "Cadastro realizado com sucesso!");
+			frame.setTitle("Cadastro");
+			LoginPanel.setVisible(true);
+			SignUpPanel.setVisible(false);
+			break;
+			
+		case USERNAME_EMAIL_REGISTERED:
+			JOptionPane.showMessageDialog(SignUpPanel, "Usuário e E-mail já cadastrados\n Clique em Esqueci a Senha na tela de Login ou tente realizar o cadastro com outros dados", "Atenção", JOptionPane.ERROR_MESSAGE);
+			break;
+			
+		case EMAIL_REGISTERED:
+			JOptionPane.showMessageDialog(SignUpPanel, "E-mail já cadastrado\n Clique em Esqueci a Senha na tela de Login ou tente realizar o cadastro com outros dados", "Atenção", JOptionPane.ERROR_MESSAGE);
+			break;
+			
+		case USERNAME_REGISTERED:
+			JOptionPane.showMessageDialog(SignUpPanel, "O nome de usuário já está sendo utilizado\n Por favor, tente realizar o cadastro com outro nome de usuário.", "Atenção", JOptionPane.ERROR_MESSAGE);
+			break;
+		}
+	}
+	
+	
+	public void processarRequestEdition(Event e) {
+		RequestEditionResponse rer = (RequestEditionResponse) e.getContent();
+		if (EditorPanel.isVisible())
+			JOptionPane.showMessageDialog(EditorPanel, String.format("O usuário %s deseja editar o documento", rer.getUsername()));
+
+	}
+	
+	
+	public void processarDelete(Event e) { 
+		DeleteResponse deleteResponse = (DeleteResponse) e.getContent();
+		if (EditorPanel.isVisible() && session.getDocumentID().intValue() == deleteResponse.getFileID().intValue()) {
+			JOptionPane.showMessageDialog(EditorPanel, "O documento foi deletado pelo dono!");
+			HomePanel.setVisible(true);
+			EditorPanel.setVisible(false);
+			obterListaArquivos();
+		} else if (HomePanel.isVisible()){
+			obterListaArquivos();
+		}
+	}
+	
+	
+	public void processarLogin(Event e) {
+		
+		LoginResponse loginResponse = (LoginResponse) e.getContent();
+		
+		if (loginResponse.getLoginStatus() == LoginStatus.NOTALLOWED) {
+			
+			senhaIncorreta();
+			
+		} else if (loginResponse.getLoginStatus() == LoginStatus.ALLOWED) {
+			
+			session.setClientUsername(loginUsuarioTextField.getText());
+			obterListaArquivos();
+			frame.setTitle("Home");
+			HomePanel.setVisible(true);
+			LoginPanel.setVisible(false);
+			
+		} else if (loginResponse.getLoginStatus() == LoginStatus.ALREADYLOGGED && LoginPanel.isVisible()) {
+			
+			JOptionPane.showMessageDialog(LoginPanel, "O usuário já está logado no sistema!");
+
+		}
+	}
+	
+	public void processarEditing(Event e) { 
+		
+		EditingResponse editingResponse = (EditingResponse) e.getContent();
+		
+		if (editingResponse.isEstaEditando()) {
+			
+			editorEditarButton.setBackground(Color.RED);
+			editorEditarButton.setText("SOLICITAR EDIÇÃO");
+			editorUsuarioEditandoLabel2.setText(editingResponse.getUsername());
+
+			editorTextPane.setEditable(false);
+
+		} else {
+			
+			editorEditarButton.setBackground(new Color(46, 139, 87));
+			editorEditarButton.setText("EDITAR");
+			editorUsuarioEditandoLabel2.setText("");
+			editorTextPane.setEditable(false);
+
+		}
+	}
+
 	public void exportarArquivo() {
-		String desktopPath = System.getProperty("user.home") + "\\Desktop\\"+editorDescricaoArquivoLabel.getText().substring(editorDescricaoArquivoLabel.getText().indexOf(" ")+1, editorDescricaoArquivoLabel.getText().length());
-		System.out.println(desktopPath);
+		String desktopPath = System.getProperty("user.home") + "\\Desktop\\"+editorDescricaoArquivoLabel2.getText().substring(editorDescricaoArquivoLabel2.getText().indexOf(" ")+1, editorDescricaoArquivoLabel2.getText().length());
 	    try {
 			BufferedWriter writer = new BufferedWriter(new FileWriter(desktopPath));
 			writer.write(editorTextPane.getText());
 			writer.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			JOptionPane.showMessageDialog(EditorPanel, "O arquivo possuí caracteres inválidos");
 			e.printStackTrace();
 		}
 	}
 	
-	public void obterListaArquivos() throws IOException {
+	public void obterListaArquivos() {
 		HomeRequest homeRequest = new HomeRequest(loginUsuarioTextField.getText());
 		Event event = new Event(EventType.HOME, homeRequest);
 		clientSocket.sendEvent(event);
 	}
+	
+	private void obterArquivo(String name, String username, String date) {
+
+		for ( File f : lstOfFiles) { 
+			
+			if (f.getName().equalsIgnoreCase(name) && f.getOwner().equalsIgnoreCase(username) && formatador.format(f.getCreationDate()).equalsIgnoreCase(date)) {
+				
+				Event event = new Event(EventType.EDITOR, new EditorRequest(f.getId()));
+				clientSocket.sendEvent(event);
+
+				break;
+			}
+		}
+	}
+	
+	public void apagaCamposEditor() {
+		editorDescricaoArquivoLabel2.setText("");
+		editorDescricaoCriacaoLabel2.setText("");
+		editorDescricaoCriadorLabel2.setText("");
+		editorDescricaoModificacaoLabel2.setText("");
+		editorTextPane.setText("");
+	}
+	
 }
