@@ -1,10 +1,10 @@
 package br.usp.nidaba.window;
 
-import java.awt.BorderLayout;
 import java.awt.Button;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.EventQueue;
+import java.awt.FileDialog;
 import java.awt.Font;
 import java.awt.SystemColor;
 import java.awt.event.ActionEvent;
@@ -12,7 +12,6 @@ import java.awt.event.ActionListener;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.LinkedList;
@@ -39,12 +38,10 @@ import br.usp.nidaba.event.Modificacao;
 import br.usp.nidaba.event.DeleteRequest;
 import br.usp.nidaba.event.DeleteResponse;
 import br.usp.nidaba.event.EditingResponse;
-import br.usp.nidaba.event.EditorRequest;
 import br.usp.nidaba.event.EditorResponse;
 import br.usp.nidaba.event.Event;
 import br.usp.nidaba.event.EventType;
 import br.usp.nidaba.event.File;
-import br.usp.nidaba.event.HomeRequest;
 import br.usp.nidaba.event.HomeResponse;
 import br.usp.nidaba.event.LoginResponse;
 import br.usp.nidaba.event.LoginStatus;
@@ -60,7 +57,6 @@ import br.usp.nidaba.socket.Client;
 
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.JTextArea;
 
 public class NidabaApplicationWindow {
 
@@ -68,7 +64,7 @@ public class NidabaApplicationWindow {
 	
 	private SimpleDateFormat formatador = new SimpleDateFormat("dd/MM/yyyy HH:mm");
 			
-	private static List<File> lstOfFiles = new LinkedList<>();
+	private static List<File> listOfFiles = new LinkedList<>();
 
 	//LOGIN COMPONENTS
 	private JPanel LoginPanel;  
@@ -77,11 +73,13 @@ public class NidabaApplicationWindow {
 	private JPasswordField loginSenhaTextField;
 	private JLabel loginSenhaIncorretaLabel;
 	
+
 	//SIGN UP COMPONENTES
 	private JPanel SignUpPanel;
 	private JTextField signUpUsuarioTextField;
 	private JTextField signUpEmailTextField;
 	private JPasswordField signUpPasswordField;
+	private JLabel signUpUsuarioLabel;
 	
 	//EDITOR
 	private JPanel EditorPanel;
@@ -101,11 +99,12 @@ public class NidabaApplicationWindow {
     JTable logTabelaAlteracoes; 
     JLabel lblNewLabel_2;
     EventService service; 
+    JPanel LogPanel;
     
     private List<Modificacao> modificacoes;
     
 	private Session session;
-	JButton editorExcluitButton; 
+	JButton editorExcluirButton; 
 	JTable homeTabelaArquivos; 
 	/**
 	 * Launch the application.
@@ -196,9 +195,55 @@ public class NidabaApplicationWindow {
 		loginSenhaIncorretaLabel.setBounds(296, 96, 353, 38);
 		LoginPanel.add(loginSenhaIncorretaLabel);
 		
+		Button loginEsqueciSenhaButton = new Button("ESQUECI A SENHA");
+		loginEsqueciSenhaButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+		          String email = JOptionPane.showInputDialog(LoginPanel,
+	                        "Insira o seu e-mail", null);
+		          if(email != null) {
+		        	  JOptionPane.showMessageDialog(LoginPanel, "Você receberá a senha no seu e-mail caso ele esteja cadastrado");
+		        	  service.enviarEmailSenha(email);
+				}
+			}
+		});
+		loginEsqueciSenhaButton.setForeground(Color.WHITE);
+		loginEsqueciSenhaButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		loginEsqueciSenhaButton.setBackground(SystemColor.windowBorder);
+		loginEsqueciSenhaButton.setBounds(478, 332, 168, 45);
+		LoginPanel.add(loginEsqueciSenhaButton);
+
+		Button loginCadastrarButton = new Button("CADASTRAR");
+		loginCadastrarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				frame.setTitle("Cadastro");
+				signUpUsuarioTextField.setText("");
+				signUpPasswordField.setText("");
+				signUpEmailTextField.setText("");
+				SignUpPanel.setVisible(true);
+				LoginPanel.setVisible(false);
+			}
+		});
+		loginCadastrarButton.setForeground(Color.WHITE);
+		loginCadastrarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		loginCadastrarButton.setBackground(SystemColor.windowBorder);
+		loginCadastrarButton.setBounds(297, 332, 168, 45);
+		LoginPanel.add(loginCadastrarButton);
 		
-		/**************************************************************************************/
-		/************************************ LOGIN LOGO *************************************/
+		
+		
+		Button loginEntrarButton = new Button("ENTRAR");
+		loginEntrarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				service.realizarLogin(loginUsuarioTextField.getText(), new String(loginSenhaTextField.getPassword()));
+			}
+		});
+		loginEntrarButton.setForeground(Color.WHITE);
+		loginEntrarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		loginEntrarButton.setBackground(new Color(241, 57, 83));
+		loginEntrarButton.setBounds(296, 280, 351, 45);
+		LoginPanel.add(loginEntrarButton);
+
+		
 		
 		loginLogoPanel = new JPanel();
 		loginLogoPanel.setBackground(Color.BLACK);
@@ -229,6 +274,8 @@ public class NidabaApplicationWindow {
 		lblNewLabel_3.setBounds(-37, 146, 265, 463);
 		loginLogoPanel.add(lblNewLabel_3);
 		
+		
+		
 		/**************************************************************************************/
 		/************************************ SIGN UP *****************************************/
 
@@ -238,7 +285,7 @@ public class NidabaApplicationWindow {
 		SignUpPanel.setLayout(null);
 		SignUpPanel.setVisible(false);
 		
-		JLabel signUpUsuarioLabel = new JLabel("USUÁRIO");
+		signUpUsuarioLabel = new JLabel("USUÁRIO");
 		signUpUsuarioLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
 		signUpUsuarioLabel.setBounds(300, 112, 73, 14);
 		SignUpPanel.add(signUpUsuarioLabel);
@@ -266,9 +313,36 @@ public class NidabaApplicationWindow {
 		signUpPasswordField = new JPasswordField();
 		signUpPasswordField.setBounds(300, 282, 351, 38);
 		SignUpPanel.add(signUpPasswordField);
+		
+		
+		Button signUpCadastrarButton = new Button("CADASTRAR");
+		signUpCadastrarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				if(validarCadastro())
+					service.realizarCadastro(signUpUsuarioTextField.getText(), signUpEmailTextField.getText(), new String(signUpPasswordField.getPassword()));
+			}
+		});
+		signUpCadastrarButton.setForeground(Color.WHITE);
+		signUpCadastrarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		signUpCadastrarButton.setBackground(new Color(241, 57, 83));
+		signUpCadastrarButton.setBounds(300, 336, 351, 45);
+		SignUpPanel.add(signUpCadastrarButton);
 				
-		/**************************************************************************************/
-		/************************************ SIGN UP LOGO *************************************/
+		Button signUpVoltarButton = new Button("VOLTAR");
+		signUpVoltarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				SignUpPanel.setVisible(false);
+				frame.setTitle("Login");
+				LoginPanel.setVisible(true);
+			}
+		});
+		signUpVoltarButton.setForeground(Color.WHITE);
+		signUpVoltarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
+		signUpVoltarButton.setBackground(SystemColor.windowBorder);
+		signUpVoltarButton.setBounds(408, 403, 122, 38);
+		SignUpPanel.add(signUpVoltarButton);
+
+		
 
 		JPanel signUpLogoPanel = new JPanel();
 		signUpLogoPanel.setBackground(Color.BLACK);
@@ -311,9 +385,6 @@ public class NidabaApplicationWindow {
 		editorTextPane.setBounds(10, 11, 511, 541);
 		editorTextPane.setLineWrap(true);
 		editorTextPane.setWrapStyleWord(true);
-
-//		JPanel noWrapPanel = new JPanel( new BorderLayout() );
-//		noWrapPanel.add(editorTextPane);
 		editorTextPane.setEditable(false);
 		JScrollPane scrollPane2 = new JScrollPane(editorTextPane);
 		scrollPane2.setBounds(10, 11, 511, 544);
@@ -372,115 +443,46 @@ public class NidabaApplicationWindow {
 		editorUsuarioEditandoLabel.setBounds(565, 440, 145, 14);
 		EditorPanel.add(editorUsuarioEditandoLabel);
 		
-		/**************************************************************************************/
-		/************************************ LOG ******************************************/
-
-		JPanel LogPanel = new JPanel();
-		LogPanel.setBackground(SystemColor.menu);
-		frame.getContentPane().add(LogPanel, "name_259201955106400");
-		LogPanel.setLayout(null);
-
-		String[][] data = {};
-	    String[] columnNames = { "Data", "Reponsável"}; 
-	    logTabelaAlteracoes = new JTable(data, columnNames); 
-	    logTabelaAlteracoes.setBackground(SystemColor.text);
-
-	    logTabelaAlteracoes.setBounds(405, 72, 270, 409);
-
-	    JScrollPane logTabelaScrollPane = new JScrollPane(logTabelaAlteracoes); 
-	    logTabelaScrollPane.setBounds(405, 11, 294, 455);
-	    LogPanel.add(logTabelaScrollPane);
-        JTableHeader header2 = logTabelaAlteracoes.getTableHeader();
-        header2.setBackground(Color.WHITE); 
-	    logTabelaScrollPane.getViewport().setBackground(Color.WHITE);
-
-	    
-	    JTextArea logTextPane = new JTextArea();
-	    logTextPane.setBounds(38, 72, 344, 409);
-	    logTextPane.setEditable(false);
-	    logTextPane.setLineWrap(true);
-	    logTextPane.setWrapStyleWord(true);
-
-	    JScrollPane logTextPaneScrollPane = new JScrollPane(logTextPane); 
-	    logTextPaneScrollPane.setBounds(10, 11, 385, 541);
-	    LogPanel.add(logTextPaneScrollPane);
-		
-		/**************************************************************************************/
-
-
-		/* BOTAO SIGN UP CADASTRAR  */
-
-		Button signUpCadastrarButton = new Button("CADASTRAR");
-		signUpCadastrarButton.addActionListener(new ActionListener() {
+		JButton editorSalvarButton = new JButton("SALVAR");
+		editorSalvarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				if(validarCadastro())
-					service.realizarCadastro(signUpUsuarioTextField.getText(), signUpEmailTextField.getText(), new String(signUpPasswordField.getPassword()));
+				service.enviarUpdate(new UpdateFileRequest(session.getDocumentID(), editorTextPane.getText()));
 			}
 		});
-		signUpCadastrarButton.setForeground(Color.WHITE);
-		signUpCadastrarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-		signUpCadastrarButton.setBackground(new Color(241, 57, 83));
-		signUpCadastrarButton.setBounds(300, 336, 351, 45);
-		SignUpPanel.add(signUpCadastrarButton);
-		
-		Button signUpVoltarButton = new Button("VOLTAR");
-		signUpVoltarButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				SignUpPanel.setVisible(false);
-				frame.setTitle("Login");
-				LoginPanel.setVisible(true);
-			}
-		});
-		signUpVoltarButton.setForeground(Color.WHITE);
-		signUpVoltarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-		signUpVoltarButton.setBackground(SystemColor.windowBorder);
-		signUpVoltarButton.setBounds(408, 403, 122, 38);
-		SignUpPanel.add(signUpVoltarButton);
+		editorSalvarButton.setBackground(Color.WHITE);
+		editorSalvarButton.setBounds(531, 133, 179, 34);
+		EditorPanel.add(editorSalvarButton);
 
-		/* BOTAO LOGIN CADASTRAR */
-
-		Button loginCadastrarButton = new Button("CADASTRAR");
-		loginCadastrarButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				frame.setTitle("Cadastro");
-				signUpUsuarioLabel.setText("");
-				signUpPasswordField.setText("");
-				signUpEmailTextField.setText("");
-				SignUpPanel.setVisible(true);
-				LoginPanel.setVisible(false);
-			}
-		});
-		loginCadastrarButton.setForeground(Color.WHITE);
-		loginCadastrarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-		loginCadastrarButton.setBackground(SystemColor.windowBorder);
-		loginCadastrarButton.setBounds(297, 332, 168, 45);
-		LoginPanel.add(loginCadastrarButton);
-		
-	
-		
-		Button loginEsqueciSenhaButton = new Button("ESQUECI A SENHA");
-		loginEsqueciSenhaButton.setForeground(Color.WHITE);
-		loginEsqueciSenhaButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-		loginEsqueciSenhaButton.setBackground(SystemColor.windowBorder);
-		loginEsqueciSenhaButton.setBounds(478, 332, 168, 45);
-		LoginPanel.add(loginEsqueciSenhaButton);
-		
-		
-		
-		JButton editorUnshareButton = new JButton("REMOVER ACESSO");
-		editorUnshareButton.setFont(new Font("Tahoma", Font.BOLD, 11));
-		editorUnshareButton.addActionListener(new ActionListener() {
+		JButton editorCriarButton = new JButton("SALVAR COMO");
+		editorCriarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				
-				String username = JOptionPane.showInputDialog(EditorPanel,
-                        "Insira o usuário que você deseja remover o acesso", null); 
-				service.pararCompartilharArquivo(username, session.getDocumentID());
-				
-			}
+		          String name = JOptionPane.showInputDialog(EditorPanel,
+	                        "Insira o nome do arquivo", null);
+		          name = name.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+
+		          if(name != null) {
+			          if(!(name.contains(".TXT") || name.contains(".txt"))) {
+						  name = name.concat(".txt");
+					  }
+						editorSalvarButton.setEnabled(false);
+						editorTextPane.setEditable(false);
+						editorEditarButton.setBackground(new Color(46, 139, 87));
+						editorEditarButton.setText("EDITAR");
+						service.enviarEventoEdicao(false);
+						
+						if (editorEditarButton.getText().equals("LIBERAR EDIÇÃO")) {
+							service.enviarEventoEdicao(false);
+						}
+						
+						service.criarNovoArquivoUpload(editorTextPane.getText(), name, session.getClientUsername());
+					}
+
+		          }
 		});
-		editorUnshareButton.setBackground(SystemColor.window);
-		editorUnshareButton.setBounds(531, 325, 179, 34);
-		EditorPanel.add(editorUnshareButton);
+		editorCriarButton.setBackground(Color.WHITE);
+		editorCriarButton.setBounds(531, 171, 179, 34);
+		EditorPanel.add(editorCriarButton);
 		
 		JButton editorExportarButton = new JButton("EXPORTAR");
 		editorExportarButton.addActionListener(new ActionListener() {
@@ -502,6 +504,9 @@ public class NidabaApplicationWindow {
 					String contextAsString;
 					try {
 						contextAsString = FileUtils.readFileToString(selectedFile, StandardCharsets.UTF_8);
+						if (editorEditarButton.getText().equals("LIBERAR EDIÇÃO")) {
+							service.enviarEventoEdicao(false);
+						}
 						service.criarNovoArquivoUpload(contextAsString, selectedFile.getName(), session.getClientUsername());
 
 					} catch (IOException e) {
@@ -533,33 +538,37 @@ public class NidabaApplicationWindow {
 		EditorPanel.add(editorCompartilharButton);
 		
 		
-		Button loginEntrarButton = new Button("ENTRAR");
-		loginEntrarButton.addActionListener(new ActionListener() {
+		JButton editorUnshareButton = new JButton("REMOVER ACESSO");
+		editorUnshareButton.setFont(new Font("Tahoma", Font.BOLD, 11));
+		editorUnshareButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				service.realizarLogin(loginUsuarioTextField.getText(), new String(loginSenhaTextField.getPassword()));
+				
+				String username = JOptionPane.showInputDialog(EditorPanel,
+                        "Insira o usuário que você deseja remover o acesso", null); 
+				service.pararCompartilharArquivo(username, session.getDocumentID());
+				
 			}
 		});
-		loginEntrarButton.setForeground(Color.WHITE);
-		loginEntrarButton.setFont(new Font("Segoe UI", Font.BOLD, 14));
-		loginEntrarButton.setBackground(new Color(241, 57, 83));
-		loginEntrarButton.setBounds(296, 280, 351, 45);
-		LoginPanel.add(loginEntrarButton);
-				
-		
-		editorExcluitButton = new JButton("EXCLUIR");
-		editorExcluitButton.addActionListener(new ActionListener() {
+		editorUnshareButton.setBackground(SystemColor.window);
+		editorUnshareButton.setBounds(531, 325, 179, 34);
+		EditorPanel.add(editorUnshareButton);
+
+		editorExcluirButton = new JButton("EXCLUIR");
+		editorExcluirButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				
 				if (editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
-					
-					service.removerArquivo(new DeleteRequest(session.getDocumentID()));
+				     int opcao = JOptionPane.showConfirmDialog(EditorPanel, "Tem certeza que deseja excluir o arquivo?", null, JOptionPane.YES_NO_OPTION);
+				     if(opcao == JOptionPane.YES_OPTION) {
+				    	 service.removerArquivo(new DeleteRequest(session.getDocumentID()));
+				     }
 				}
 				
 			}
 		});
-		editorExcluitButton.setBackground(Color.WHITE);
-		editorExcluitButton.setBounds(531, 365, 179, 34);
-		EditorPanel.add(editorExcluitButton);
+		editorExcluirButton.setBackground(Color.WHITE);
+		editorExcluirButton.setBounds(531, 365, 179, 34);
+		EditorPanel.add(editorExcluirButton);
 		
 		editorUsuarioEditandoLabel2 = new JLabel("");
 		editorUsuarioEditandoLabel2.setOpaque(true);
@@ -567,40 +576,6 @@ public class NidabaApplicationWindow {
 		editorUsuarioEditandoLabel2.setBounds(531, 455, 179, 23);
 		EditorPanel.add(editorUsuarioEditandoLabel2);
 
-		
-		JButton editorVoltarButton = new JButton("VOLTAR");
-		editorVoltarButton.setFont(new Font("Tahoma", Font.BOLD, 9));
-		editorVoltarButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EditorPanel.setVisible(false);
-				frame.setTitle("Home");
-				HomePanel.setVisible(true);
-				if (editorEditarButton.getText().equalsIgnoreCase("LIBERAR EDIÇÃO")) {
-					service.enviarEventoEdicao(false);
-					editorEditarButton.setText("EDITAR");
-					editorEditarButton.setBackground(new Color(46, 139, 87));
-					editorUsuarioEditandoLabel2.setText("");
-				}
-				obterListaArquivos();
-			}
-		});
-		editorVoltarButton.setBackground(Color.WHITE);
-		editorVoltarButton.setBounds(562, 521, 121, 34);
-		EditorPanel.add(editorVoltarButton);
-		
-		
-		JButton editorSalvarButton = new JButton("SALVAR");
-		editorSalvarButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				service.enviarUpdate(new UpdateFileRequest(session.getDocumentID(), editorTextPane.getText()));
-			}
-		});
-		editorSalvarButton.setBackground(Color.WHITE);
-		editorSalvarButton.setBounds(531, 133, 179, 34);
-		EditorPanel.add(editorSalvarButton);
-		
-
-		
 		editorEditarButton = new JButton("EDITAR");
 		editorEditarButton.setFont(new Font("Tahoma", Font.BOLD, 11));
 		editorEditarButton.addActionListener(new ActionListener() {
@@ -635,7 +610,162 @@ public class NidabaApplicationWindow {
 		editorEditarButton.setBackground(new Color(46, 139, 87));
 		editorEditarButton.setBounds(531, 403, 179, 34);
 		EditorPanel.add(editorEditarButton);
-				
+
+		
+		JButton editorLogButton = new JButton("LOG");
+		editorLogButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				frame.setTitle("Modificações - "+editorDescricaoArquivoLabel2.getText());
+				LogPanel.setVisible(true);
+				EditorPanel.setVisible(false);
+			}
+		});
+		editorLogButton.setFont(new Font("Tahoma", Font.BOLD, 11));
+		editorLogButton.setBackground(Color.WHITE);
+		editorLogButton.setBounds(530, 480, 180, 27);
+		EditorPanel.add(editorLogButton);
+
+		
+		
+		JButton editorVoltarButton = new JButton("VOLTAR");
+		editorVoltarButton.setFont(new Font("Tahoma", Font.BOLD, 9));
+		editorVoltarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				EditorPanel.setVisible(false);
+				frame.setTitle("Home");
+				HomePanel.setVisible(true);
+				if (editorEditarButton.getText().equalsIgnoreCase("LIBERAR EDIÇÃO")) {
+					service.enviarEventoEdicao(false);
+					editorEditarButton.setText("EDITAR");
+					editorEditarButton.setBackground(new Color(46, 139, 87));
+					editorUsuarioEditandoLabel2.setText("");
+				}
+				service.obterListaArquivos(session.getClientUsername());
+			}
+		});
+		editorVoltarButton.setBackground(Color.WHITE);
+		editorVoltarButton.setBounds(562, 521, 121, 34);
+		EditorPanel.add(editorVoltarButton);
+
+		/**************************************************************************************/
+		/************************************ LOG ******************************************/
+
+		LogPanel = new JPanel();
+		LogPanel.setBackground(SystemColor.menu);
+		frame.getContentPane().add(LogPanel, "name_259201955106400");
+		LogPanel.setLayout(null);
+
+		String[][] data = {};
+	    String[] columnNames = { "Data", "Reponsável"}; 
+	    logTabelaAlteracoes = new JTable(data, columnNames); 
+	    logTabelaAlteracoes.setBackground(SystemColor.text);
+
+	    logTabelaAlteracoes.setBounds(405, 72, 270, 409);
+
+	    JScrollPane logTabelaScrollPane = new JScrollPane(logTabelaAlteracoes); 
+	    logTabelaScrollPane.setBounds(405, 11, 294, 455);
+	    LogPanel.add(logTabelaScrollPane);
+        JTableHeader header2 = logTabelaAlteracoes.getTableHeader();
+        header2.setBackground(Color.WHITE); 
+	    logTabelaScrollPane.getViewport().setBackground(Color.WHITE);
+
+	    
+	    JTextArea logTextPane = new JTextArea();
+	    logTextPane.setBounds(38, 72, 344, 409);
+	    logTextPane.setEditable(false);
+	    logTextPane.setLineWrap(true);
+	    logTextPane.setWrapStyleWord(true);
+
+	    JScrollPane logTextPaneScrollPane = new JScrollPane(logTextPane); 
+	    logTextPaneScrollPane.setBounds(10, 11, 385, 541);
+	    LogPanel.add(logTextPaneScrollPane);
+		
+		JButton logVisualizarTextButton = new JButton("VISUALIZAR TEXTO");
+		logVisualizarTextButton.setBackground(SystemColor.window);
+		logVisualizarTextButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				int valor = logTabelaAlteracoes.getSelectedRow();
+				String data = (String) logTabelaAlteracoes.getValueAt(valor , 0);
+				String autor = (String) logTabelaAlteracoes.getValueAt(valor , 1);
+				String conteudo ="";
+				for (Modificacao m : modificacoes) {
+					if (formatador.format(m.getDataMoficacao()).equals(data) && m.getUsuario().equalsIgnoreCase(autor)) {
+						conteudo = m.getSnapShot();
+					}
+				}
+				logTextPane.setText(conteudo);
+
+			}
+		});
+		
+		frame.addWindowListener(new java.awt.event.WindowAdapter() {
+		    @Override
+		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+		    	
+		    	if (editorEditarButton.getText().equals("LIBERAR EDIÇÃO")) {
+		    		
+		    		service.enviarEventoEdicao(false);
+		    		
+		    	}
+		  
+		    }
+		});
+		logVisualizarTextButton.setBounds(405, 477, 294, 32);
+		LogPanel.add(logVisualizarTextButton);
+		
+		JButton logVoltarButton = new JButton("VOLTAR");
+		logVoltarButton.setBackground(SystemColor.window);
+		logVoltarButton.addActionListener(new ActionListener() {
+			
+			public void actionPerformed(ActionEvent e) {
+				logTextPane.setText("");
+				frame.setTitle("Editor - "+editorDescricaoArquivoLabel2.getText());
+				EditorPanel.setVisible(true);
+				if (!editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
+					editorExcluirButton.setEnabled(false);
+				} else {
+					editorExcluirButton.setEnabled(true);
+				}
+				LogPanel.setVisible(false);
+			}
+		});
+		logVoltarButton.setBounds(559, 520, 140, 32);
+		LogPanel.add(logVoltarButton);
+		
+		JButton logExportarButton = new JButton("EXPORTAR");
+		logExportarButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+
+				try {
+					
+			        JFileChooser fileChooser = new JFileChooser();
+		            int r = fileChooser.showSaveDialog(null); 
+		            if (r == JFileChooser.APPROVE_OPTION)  {
+		            	String path = fileChooser.getSelectedFile().getAbsolutePath();
+		            	path = path.contains(".TXT") || path.contains(".txt") ? path : path.concat(".txt");
+				    	BufferedWriter writer = new BufferedWriter(new FileWriter(path));
+				    	
+						writer.write(logTextPane.getText());
+						writer.close();
+						
+						JOptionPane.showMessageDialog(LogPanel, "O arquivo foi exportado!");
+
+		            }
+
+
+				} catch (IOException e) {
+					JOptionPane.showMessageDialog(LogPanel, "O arquivo possuí caracteres inválidos");
+					e.printStackTrace();
+				}
+
+			}
+		});
+		logExportarButton.setBackground(SystemColor.window);
+		logExportarButton.setBounds(405, 520, 144, 32);
+		LogPanel.add(logExportarButton);
+
+		/**************************************************************************************/
+		/************************************ HOME ******************************************/
 		HomePanel = new JPanel();
 		frame.getContentPane().add(HomePanel, "name_148599297405900");
 		HomePanel.setLayout(null);
@@ -651,9 +781,9 @@ public class NidabaApplicationWindow {
 				frame.setTitle("Editor - "+editorDescricaoArquivoLabel2.getText());
 				EditorPanel.setVisible(true);
 				if (!editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
-					editorExcluitButton.setEnabled(false);
+					editorExcluirButton.setEnabled(false);
 				} else {
-					editorExcluitButton.setEnabled(true);
+					editorExcluirButton.setEnabled(true);
 				}
 				HomePanel.setVisible(false);
 			}
@@ -672,7 +802,7 @@ public class NidabaApplicationWindow {
 				String username = (String) homeTabelaArquivos.getValueAt(valor , 1);
 				String date = (String) homeTabelaArquivos.getValueAt(valor , 2);
 				
-				obterArquivo(name, username, date);
+				service.obterArquivo(name, username, date, listOfFiles, formatador);
 				
 			}
 
@@ -718,128 +848,8 @@ public class NidabaApplicationWindow {
 		lblNewLabel_2.setBounds(10, 38, 259, 174);
 		recadoPanel.add(lblNewLabel_2);
 		
-			JButton logVisualizarTextButton = new JButton("VISUALIZAR TEXTO");
-			logVisualizarTextButton.setBackground(SystemColor.window);
-			logVisualizarTextButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent arg0) {
-					int valor = logTabelaAlteracoes.getSelectedRow();
-					String data = (String) logTabelaAlteracoes.getValueAt(valor , 0);
-					String autor = (String) logTabelaAlteracoes.getValueAt(valor , 1);
-					String conteudo ="";
-					for (Modificacao m : modificacoes) {
-						if (formatador.format(m.getDataMoficacao()).equals(data) && m.getUsuario().equalsIgnoreCase(autor)) {
-							conteudo = m.getSnapShot();
-						}
-					}
-					logTextPane.setText(conteudo);
+		/**************************************************************************************/
 
-				}
-			});
-			
-			frame.addWindowListener(new java.awt.event.WindowAdapter() {
-			    @Override
-			    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-			    	
-			    	if (editorEditarButton.getText().equals("LIBERAR EDIÇÃO")) {
-			    		
-			    		service.enviarEventoEdicao(false);
-			    		
-			    	}
-			  
-			    }
-			});
-			logVisualizarTextButton.setBounds(405, 477, 294, 32);
-			LogPanel.add(logVisualizarTextButton);
-			
-			JButton logVoltarButton = new JButton("VOLTAR");
-			logVoltarButton.setBackground(SystemColor.window);
-			logVoltarButton.addActionListener(new ActionListener() {
-				
-				public void actionPerformed(ActionEvent e) {
-					logTextPane.setText("");
-					frame.setTitle("Editor - "+editorDescricaoArquivoLabel2.getText());
-					EditorPanel.setVisible(true);
-					if (!editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
-						editorExcluitButton.setEnabled(false);
-					} else {
-						editorExcluitButton.setEnabled(true);
-					}
-					LogPanel.setVisible(false);
-				}
-			});
-			logVoltarButton.setBounds(559, 520, 140, 32);
-			LogPanel.add(logVoltarButton);
-			
-			JButton logExportarButton = new JButton("EXPORTAR");
-			logExportarButton.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent arg0) {
-					String desktopPath = System.getProperty("user.home") + "\\Desktop\\"+editorDescricaoArquivoLabel2.getText().substring(editorDescricaoArquivoLabel2.getText().indexOf(" ")+1, editorDescricaoArquivoLabel2.getText().length());
-				    try {
-						BufferedWriter writer = new BufferedWriter(new FileWriter(desktopPath));
-						writer.write(logTextPane.getText());
-						writer.close();
-					} catch (IOException e) {
-						JOptionPane.showMessageDialog(LogPanel, "O arquivo possuí caracteres inválidos");
-						e.printStackTrace();
-					}
-
-				}
-			});
-			logExportarButton.setBackground(SystemColor.window);
-			logExportarButton.setBounds(405, 520, 144, 32);
-			LogPanel.add(logExportarButton);
-			
-			
-		JButton editorLogButton = new JButton("LOG");
-		editorLogButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				frame.setTitle("Modificações - "+editorDescricaoArquivoLabel2.getText());
-				LogPanel.setVisible(true);
-				EditorPanel.setVisible(false);
-			}
-		});
-		editorLogButton.setFont(new Font("Tahoma", Font.BOLD, 11));
-		editorLogButton.setBackground(Color.WHITE);
-		editorLogButton.setBounds(530, 480, 180, 27);
-		EditorPanel.add(editorLogButton);
-		
-		
-		loginEsqueciSenhaButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-		          String email = JOptionPane.showInputDialog(LoginPanel,
-	                        "Insira o seu e-mail", null);
-		          if(email != null) {
-		        	  JOptionPane.showMessageDialog(LoginPanel, "Você receberá a senha no seu e-mail caso ele esteja cadastrado");
-		        	  service.enviarEmailSenha(email);
-				}
-			}
-		});
-		
-		JButton editorCriarButton = new JButton("SALVAR COMO");
-		editorCriarButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				
-		          String name = JOptionPane.showInputDialog(EditorPanel,
-	                        "Insira o nome do arquivo", null);
-		          if(name != null) {
-			          if(!(name.contains(".TXT") || name.contains(".txt"))) {
-						  name = name.concat(".txt");
-					  }
-						editorSalvarButton.setEnabled(false);
-						editorTextPane.setEditable(false);
-						editorEditarButton.setBackground(new Color(46, 139, 87));
-						editorEditarButton.setText("EDITAR");
-						service.enviarEventoEdicao(false);
-
-						service.criarNovoArquivoUpload(editorTextPane.getText(), name, session.getClientUsername());
-					}
-
-		          }
-		});
-		editorCriarButton.setBackground(Color.WHITE);
-		editorCriarButton.setBounds(531, 171, 179, 34);
-		EditorPanel.add(editorCriarButton);
-		
 	}
 	
 	
@@ -960,7 +970,7 @@ public class NidabaApplicationWindow {
 		
 		HomeResponse homeResponse = (HomeResponse) e.getContent();
 		
-		lstOfFiles = homeResponse.getListOfFiles();
+		listOfFiles = homeResponse.getListOfFiles();
 		
 		int row = 0;
 
@@ -1007,9 +1017,9 @@ public class NidabaApplicationWindow {
 		frame.setTitle("Editor - "+editorDescricaoArquivoLabel2.getText());
 		EditorPanel.setVisible(true);
 		if (!editorDescricaoCriadorLabel2.getText().equals(session.getClientUsername())) {
-			editorExcluitButton.setEnabled(false);
+			editorExcluirButton.setEnabled(false);
 		} else {
-			editorExcluitButton.setEnabled(true);
+			editorExcluirButton.setEnabled(true);
 		}
 		HomePanel.setVisible(false);
 		frame.setTitle(String.format("Editor - %s", editorResponse.getFile().getName())); 
@@ -1070,14 +1080,14 @@ public class NidabaApplicationWindow {
 				
 			}
 			
-			obterListaArquivos();
+			service.obterListaArquivos(session.getClientUsername());
 
 		}
 	}
 		
 	public void processarShareFile() {
 		if ( HomePanel.isVisible() ) {
-			obterListaArquivos();
+			service.obterListaArquivos(session.getClientUsername());
 		}
 	}
 	
@@ -1142,9 +1152,9 @@ public class NidabaApplicationWindow {
 			JOptionPane.showMessageDialog(EditorPanel, "O documento foi deletado pelo dono!");
 			HomePanel.setVisible(true);
 			EditorPanel.setVisible(false);
-			obterListaArquivos();
+			service.obterListaArquivos(session.getClientUsername());
 		} else if (HomePanel.isVisible()){
-			obterListaArquivos();
+			service.obterListaArquivos(session.getClientUsername());
 		}
 	}
 	
@@ -1160,7 +1170,7 @@ public class NidabaApplicationWindow {
 		} else if (loginResponse.getLoginStatus() == LoginStatus.ALLOWED) {
 			
 			session.setClientUsername(loginUsuarioTextField.getText());
-			obterListaArquivos();
+			service.obterListaArquivos(session.getClientUsername());
 			frame.setTitle("Home");
 			HomePanel.setVisible(true);
 			LoginPanel.setVisible(false);
@@ -1195,37 +1205,26 @@ public class NidabaApplicationWindow {
 	}
 
 	public void exportarArquivo() {
-		String desktopPath = System.getProperty("user.home") + "\\Desktop\\"+editorDescricaoArquivoLabel2.getText().substring(editorDescricaoArquivoLabel2.getText().indexOf(" ")+1, editorDescricaoArquivoLabel2.getText().length());
 	    try {
-			BufferedWriter writer = new BufferedWriter(new FileWriter(desktopPath));
-			writer.write(editorTextPane.getText());
-			writer.close();
+	        JFileChooser fileChooser = new JFileChooser();
+            int r = fileChooser.showSaveDialog(null); 
+            if (r == JFileChooser.APPROVE_OPTION)  {
+            	String path = fileChooser.getSelectedFile().getAbsolutePath();
+            	path = path.contains(".TXT") || path.contains(".txt") ? path : path.concat(".txt");
+		    	BufferedWriter writer = new BufferedWriter(new FileWriter(path));
+		    	
+				writer.write(editorTextPane.getText());
+				writer.close();
+				
+				JOptionPane.showMessageDialog(LogPanel, "O arquivo foi exportado!");
+            }
 		} catch (IOException e) {
 			JOptionPane.showMessageDialog(EditorPanel, "O arquivo possuí caracteres inválidos");
 			e.printStackTrace();
 		}
 	}
 	
-	public void obterListaArquivos() {
-		HomeRequest homeRequest = new HomeRequest(loginUsuarioTextField.getText());
-		Event event = new Event(EventType.HOME, homeRequest);
-		clientSocket.sendEvent(event);
-	}
-	
-	private void obterArquivo(String name, String username, String date) {
 
-		for ( File f : lstOfFiles) { 
-			
-			if (f.getName().equalsIgnoreCase(name) && f.getOwner().equalsIgnoreCase(username) && formatador.format(f.getCreationDate()).equalsIgnoreCase(date)) {
-				
-				Event event = new Event(EventType.EDITOR, new EditorRequest(f.getId()));
-				clientSocket.sendEvent(event);
-
-				break;
-			}
-		}
-	}
-	
 	public void apagaCamposEditor() {
 		editorDescricaoArquivoLabel2.setText("");
 		editorDescricaoCriacaoLabel2.setText("");
