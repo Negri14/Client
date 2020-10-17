@@ -28,8 +28,21 @@ public class Client {
 		applicationWindow = nidabaApplicationWindow;
 		
 	}
+	
+	/*
 
+	new Socket(ip, porta) -> Cria um stream socket e conecta ao host e porta passados como parâmetros
+	
+	Cria um object output stream e um object input stream para o socket. 
 
+	Criar uma thread para ler objetos enviados pelo servidor
+	
+	Envia o objeto recebido pelo servidor (evento) para o método recebeEvento da classe ApplicationWindow, onde o evento é interprado. 
+	 
+	Se ocorrer algum problema na conexão socket, a conexão é fechada. 
+	 
+
+	*/
 	public void initializeSocket() throws IOException {
 		
         InetAddress ip = InetAddress.getByName("localhost"); 
@@ -53,14 +66,8 @@ public class Client {
                         
                     } catch (Exception  e) { 
                     	
-                    	try {
-							socket.close();
-							shutDown = true;
-						} catch (IOException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-                        e.printStackTrace(); 
+                    	closeSocketConnection();
+                        
                     } 
                 } 
             } 
@@ -70,7 +77,11 @@ public class Client {
 
 	}
 	
-	
+	/*
+
+	 Envia objetos (eventos) para o servidor. Os eventos são criados durante a interação do usuário com o sistema. 
+
+	*/
 	public void sendEvent(Event event) {
 		
 		try {
@@ -85,6 +96,11 @@ public class Client {
 		
 	}
 	
+	/*
+
+		Fecha a conexão socket
+
+	*/
 	public void closeSocketConnection() {
 		try {
 			socket.close();

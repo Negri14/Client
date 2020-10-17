@@ -4,7 +4,6 @@ import java.awt.Button;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.EventQueue;
-import java.awt.FileDialog;
 import java.awt.Font;
 import java.awt.SystemColor;
 import java.awt.event.ActionEvent;
@@ -92,20 +91,23 @@ public class NidabaApplicationWindow {
 	private JButton editorCompartilharButton;
 	private JLabel editorUsuarioEditandoLabel2;
 	private JButton editorEditarButton;
-	
+	private JButton editorExcluirButton; 
+
 	//HOME
-	JPanel HomePanel;
+	private JPanel HomePanel;
+	private JTable homeTabelaArquivos; 
+
+	
 	private Client clientSocket;
-    JTable logTabelaAlteracoes; 
-    JLabel lblNewLabel_2;
-    EventService service; 
-    JPanel LogPanel;
+    private JTable logTabelaAlteracoes; 
+    private JLabel lblNewLabel_2;
+    private EventService service; 
+    private JPanel LogPanel;
     
     private List<Modificacao> modificacoes;
     
 	private Session session;
-	JButton editorExcluirButton; 
-	JTable homeTabelaArquivos; 
+
 	/**
 	 * Launch the application.
 	 */
@@ -133,7 +135,9 @@ public class NidabaApplicationWindow {
 		this.service = new EventService(clientSocket);
 	}
 	
-
+	/*
+		Quando o programa é iniciado é criado um socket com o back-end (Nabu).
+	*/
 	public void createSocketConnection()  {
 		
 		this.session = new Session();
@@ -195,6 +199,12 @@ public class NidabaApplicationWindow {
 		loginSenhaIncorretaLabel.setBounds(296, 96, 353, 38);
 		LoginPanel.add(loginSenhaIncorretaLabel);
 		
+		/*
+		 * 						< BOTÃO ESQUECI A SENHA >
+		 * 1. Cria uma caixa de dialogo na qual o usuário deve inserir o e-mail do cadastro.
+		 * 2. Envia o evento RECOVER_PASSWORD para o servidor.
+		 */
+		
 		Button loginEsqueciSenhaButton = new Button("ESQUECI A SENHA");
 		loginEsqueciSenhaButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -211,6 +221,11 @@ public class NidabaApplicationWindow {
 		loginEsqueciSenhaButton.setBackground(SystemColor.windowBorder);
 		loginEsqueciSenhaButton.setBounds(478, 332, 168, 45);
 		LoginPanel.add(loginEsqueciSenhaButton);
+		
+		/*
+		 * 				< BOTÃO CADASTRAR >
+		 * 1. Abre a página de cadastro e limpa os campos.
+		 */
 
 		Button loginCadastrarButton = new Button("CADASTRAR");
 		loginCadastrarButton.addActionListener(new ActionListener() {
@@ -229,8 +244,10 @@ public class NidabaApplicationWindow {
 		loginCadastrarButton.setBounds(297, 332, 168, 45);
 		LoginPanel.add(loginCadastrarButton);
 		
-		
-		
+		/*
+		 * 				< BOTÃO ENTRAR >
+		 * 1. Envia o evento LOGIN para o servidor e aguarda a resposta.
+		 */		
 		Button loginEntrarButton = new Button("ENTRAR");
 		loginEntrarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -242,8 +259,6 @@ public class NidabaApplicationWindow {
 		loginEntrarButton.setBackground(new Color(241, 57, 83));
 		loginEntrarButton.setBounds(296, 280, 351, 45);
 		LoginPanel.add(loginEntrarButton);
-
-		
 		
 		loginLogoPanel = new JPanel();
 		loginLogoPanel.setBackground(Color.BLACK);
@@ -314,7 +329,11 @@ public class NidabaApplicationWindow {
 		signUpPasswordField.setBounds(300, 282, 351, 38);
 		SignUpPanel.add(signUpPasswordField);
 		
-		
+		/*
+		 * 				< BOTÃO CADASTRAR >
+		 * 1. Envia o evento REGISTER para o servidor com os dados preenchidos pelo usuário.
+		 */		
+
 		Button signUpCadastrarButton = new Button("CADASTRAR");
 		signUpCadastrarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -327,7 +346,12 @@ public class NidabaApplicationWindow {
 		signUpCadastrarButton.setBackground(new Color(241, 57, 83));
 		signUpCadastrarButton.setBounds(300, 336, 351, 45);
 		SignUpPanel.add(signUpCadastrarButton);
-				
+		
+		/*
+		 * 				< BOTÃO VOLTAR >
+		 * 1. Volta para a página inicial
+		 */		
+
 		Button signUpVoltarButton = new Button("VOLTAR");
 		signUpVoltarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -443,6 +467,12 @@ public class NidabaApplicationWindow {
 		editorUsuarioEditandoLabel.setBounds(565, 440, 145, 14);
 		EditorPanel.add(editorUsuarioEditandoLabel);
 		
+		/*
+		 * 				< BOTÃO SALVAR >
+		 * > O botão está habilitado apenas para quem está editando o arquivo;
+		 * 1. Envia o evento UPDATE FILE contendo as alterações realizas pelo usuário.
+		 */		
+
 		JButton editorSalvarButton = new JButton("SALVAR");
 		editorSalvarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -452,6 +482,13 @@ public class NidabaApplicationWindow {
 		editorSalvarButton.setBackground(Color.WHITE);
 		editorSalvarButton.setBounds(531, 133, 179, 34);
 		EditorPanel.add(editorSalvarButton);
+		
+		/*
+		 * 				< BOTÃO SALVAR COMO>
+		 * 1. Abre um caixa de diálogo onde o usuário deve inserir o nome do arquivo
+		 * 2. Troca caracteres não permitidos em nomes de arquivos por '_'.
+		 * 3. Envia o evento NEWFILE contendo as informações do arquivo que está sendo criado.
+		 */		
 
 		JButton editorCriarButton = new JButton("SALVAR COMO");
 		editorCriarButton.addActionListener(new ActionListener() {
@@ -484,6 +521,10 @@ public class NidabaApplicationWindow {
 		editorCriarButton.setBounds(531, 171, 179, 34);
 		EditorPanel.add(editorCriarButton);
 		
+		 /* 			< BOTÃO EXPORTAR>
+		 * 1. Invoca o método que é responsável por salvar o arquivo na máquina do usuário.
+		 */		
+
 		JButton editorExportarButton = new JButton("EXPORTAR");
 		editorExportarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -494,6 +535,12 @@ public class NidabaApplicationWindow {
 		editorExportarButton.setBounds(531, 248, 179, 34);
 		EditorPanel.add(editorExportarButton);
 		
+		/*
+		 * 				< BOTÃO UPLOAD NOVO ARQUIVO>
+		 * 1. Abre um caixa de diálogo onde o usuário deve selecionar o arquivo que deseja criar/salvar no sistema.
+		 * 2. Envia o evento NEWFILE contendo as informações do arquivo que está sendo criado.
+		 */		
+
 		JButton editorUploadButton = new JButton("UPLOAD NOVO ARQUIVO");
 		editorUploadButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -521,7 +568,11 @@ public class NidabaApplicationWindow {
 		editorUploadButton.setBounds(531, 209, 179, 34);
 		EditorPanel.add(editorUploadButton);
 		
-		
+		/*
+		 * 				< BOTÃO COMPARTILHAR>
+		 * 1. Abre um caixa de diálogo onde o usuário deve inserir o usuário com o qual deseja compartilhar o arquivo
+		 * 2. Envia o evento SHARE contendo a identificação do documento e do usuário.
+		 */		
 		
 		editorCompartilharButton = new JButton("COMPARTILHAR");
 		editorCompartilharButton.addActionListener(new ActionListener() {
@@ -537,7 +588,10 @@ public class NidabaApplicationWindow {
 		editorCompartilharButton.setBounds(531, 287, 179, 34);
 		EditorPanel.add(editorCompartilharButton);
 		
-		
+		 /* 				< BOTÃO REMOVER O ACESSO>
+		 * 1. Abre um caixa de diálogo onde o usuário deve inserir o usuário com o qual deseja parar de compartilhar o arquivo
+		 * 2. Envia o evento UNSHARE contendo a identificação do documento e do usuário.
+		 */		
 		JButton editorUnshareButton = new JButton("REMOVER ACESSO");
 		editorUnshareButton.setFont(new Font("Tahoma", Font.BOLD, 11));
 		editorUnshareButton.addActionListener(new ActionListener() {
@@ -552,6 +606,12 @@ public class NidabaApplicationWindow {
 		editorUnshareButton.setBackground(SystemColor.window);
 		editorUnshareButton.setBounds(531, 325, 179, 34);
 		EditorPanel.add(editorUnshareButton);
+		
+		 /* 				< BOTÃO EXCLUIR>
+		 * > Habilitado apenas para o dono do arquivo
+		 * 1. Abre um caixa de diálogo onde o usuário deve inserir confirmar que deseja excluir o arquivo
+		 * 2. Envia o evento DELETE contendo a identificação do documento.
+		 */		
 
 		editorExcluirButton = new JButton("EXCLUIR");
 		editorExcluirButton.addActionListener(new ActionListener() {
@@ -575,6 +635,16 @@ public class NidabaApplicationWindow {
 		editorUsuarioEditandoLabel2.setBackground(SystemColor.info);
 		editorUsuarioEditandoLabel2.setBounds(531, 455, 179, 23);
 		EditorPanel.add(editorUsuarioEditandoLabel2);
+		
+		
+		
+		 /* 				< BOTÃO EDITAR>
+		 * > O botão EDITAR contém três estados
+		 * 		- VERDE <EDITAR> : Ocorre quando não há outro usuário editando o arquivo e ao ser clicado habilita a edição do arquivo.
+		 * 		- AMARELO <LIBERAR ACESSO> : Ocorre apenas para o usuário que está editando e ao ser clicado libera o arquivo.
+		 * 		- VERMELHO <SOLICITAR EDIÇÃO> : Ao ser clicado envia uma requisição de edição para o usuário que está editando.
+		 * 1. Envia o evento EDITING (true ou false) nos estados verde e amarelo ou REQUEST_EDITION no estado vermelho
+		 */		
 
 		editorEditarButton = new JButton("EDITAR");
 		editorEditarButton.setFont(new Font("Tahoma", Font.BOLD, 11));
@@ -611,7 +681,9 @@ public class NidabaApplicationWindow {
 		editorEditarButton.setBounds(531, 403, 179, 34);
 		EditorPanel.add(editorEditarButton);
 
-		
+		 /* 				< BOTÃO LOG >
+		  * 1. Abre a página de log contendo todas as versões salvas			
+		 */		
 		JButton editorLogButton = new JButton("LOG");
 		editorLogButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -626,7 +698,11 @@ public class NidabaApplicationWindow {
 		EditorPanel.add(editorLogButton);
 
 		
-		
+		 /* 				< BOTÃO VOLTAR >
+		  * 1. Volta para a Home
+		  * 2. Envia o evento EDITING <false> caso o usuário esteja editando e o evento HOME para obter a lista de arquivos do usuário.			
+		 */		
+
 		JButton editorVoltarButton = new JButton("VOLTAR");
 		editorVoltarButton.setFont(new Font("Tahoma", Font.BOLD, 9));
 		editorVoltarButton.addActionListener(new ActionListener() {
@@ -679,7 +755,10 @@ public class NidabaApplicationWindow {
 	    JScrollPane logTextPaneScrollPane = new JScrollPane(logTextPane); 
 	    logTextPaneScrollPane.setBounds(10, 11, 385, 541);
 	    LogPanel.add(logTextPaneScrollPane);
-		
+	    
+		 /* 				< BOTÃO VISUALIZAR TEXTO >
+		  * 1. Mostra a snapshot do texto quando ele foi salvo. 
+		 */		
 		JButton logVisualizarTextButton = new JButton("VISUALIZAR TEXTO");
 		logVisualizarTextButton.setBackground(SystemColor.window);
 		logVisualizarTextButton.addActionListener(new ActionListener() {
@@ -713,6 +792,9 @@ public class NidabaApplicationWindow {
 		logVisualizarTextButton.setBounds(405, 477, 294, 32);
 		LogPanel.add(logVisualizarTextButton);
 		
+		 /* 				< BOTÃO VOLTAR >
+		  * 1. Volta para a tela de edição.
+		 */		
 		JButton logVoltarButton = new JButton("VOLTAR");
 		logVoltarButton.setBackground(SystemColor.window);
 		logVoltarButton.addActionListener(new ActionListener() {
@@ -732,6 +814,9 @@ public class NidabaApplicationWindow {
 		logVoltarButton.setBounds(559, 520, 140, 32);
 		LogPanel.add(logVoltarButton);
 		
+		 /* 			< BOTÃO EXPORTAR>
+		 * 1. Invoca o método que é responsável por salvar o arquivo na máquina do usuário.
+		 */		
 		JButton logExportarButton = new JButton("EXPORTAR");
 		logExportarButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -771,6 +856,9 @@ public class NidabaApplicationWindow {
 		HomePanel.setLayout(null);
 		HomePanel.setBackground(SystemColor.menu);
 
+		 /* 			< BOTÃO NOVO ARQUIVO >
+		 * 1. Abre a página de edição para a criação de um novo arquivo.
+		 */		
 		JButton homeNovoArquivoButton = new JButton("NOVO ARQUIVO");
 		homeNovoArquivoButton.setBackground(SystemColor.window);
 		homeNovoArquivoButton.addActionListener(new ActionListener() {
@@ -791,6 +879,10 @@ public class NidabaApplicationWindow {
 		homeNovoArquivoButton.setBounds(516, 516, 171, 36);
 		HomePanel.add(homeNovoArquivoButton);
 		
+		 /* 			< BOTÃO ABRIR >
+		 * 1. Envia o evento EDITOR contendo a identificação do arquivo
+		 * 2. Abre a página Editor contendo as informações do arquivo
+		 */		
 		JButton homeAbrirButton = new JButton("ABRIR");
 		homeAbrirButton.setBackground(SystemColor.window);
 		homeAbrirButton.addActionListener(new ActionListener() {
@@ -852,7 +944,10 @@ public class NidabaApplicationWindow {
 
 	}
 	
-	
+	/*
+	 * 											VALIDAÇÃO CADASTRO
+	 * 1. Verifica se os campos estão preenchidos. Caso não estejam, deixa os campos vermelhos mostra uma mensagem.
+	 */
 	private boolean validarCadastro() {
 		
 		boolean ehValido = true;
@@ -887,6 +982,11 @@ public class NidabaApplicationWindow {
 		return ehValido;
 	}
 	
+	/*
+	 * 			    RECEBER EVENTOS
+	 * 1. Processa os eventos recebidos do servidor
+	 */
+
 	public void recebeEventos(Event eventoRecebido) {
 		
 		if (eventoRecebido == null)
@@ -947,6 +1047,11 @@ public class NidabaApplicationWindow {
 		
 	}
 	
+	/*
+	 * 			   						 RECEBER EVENTOS
+	 * 1. Se o login ou senha estiverem incorretos, mostra mensagem informando que estão incorretos. 
+	 */
+
 	public void senhaIncorreta () {
 		
 		loginSenhaIncorretaLabel.setOpaque(true);
@@ -958,6 +1063,13 @@ public class NidabaApplicationWindow {
 		loginSenhaIncorretaLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
 
 	}
+	
+	
+	/*
+	 * 			   						PROCESSAR HOME
+	 * 1. Preenche a mensagem de boas vindas com o nome do usuário.
+	 * 2. Preenche a lista de arquivos disponíveis. 
+	 */
 
 	public void processarHome(Event e) { 
 		
@@ -988,6 +1100,10 @@ public class NidabaApplicationWindow {
 
 	}
 	
+	/*
+	 * 			   						PROCESSAR EDITOR
+	 * 1. Preenche as informações do arquivos que está sendo aberto e define o estado do botão EDITAR 
+	 */
 	
 	public void processarEditor(Event e) {
 		EditorResponse editorResponse = (EditorResponse) e.getContent();
@@ -1030,6 +1146,10 @@ public class NidabaApplicationWindow {
 
 	}
 	
+	/*
+	 * 			   						PROCESSAR UPDATE
+	 * 1. Atualiza as informações do arquivo que foi salvo por outro usuário
+	 */
 	public void processarUpdate(Event e) {
 		
 		EditorResponse er = (EditorResponse) e.getContent();
@@ -1042,7 +1162,10 @@ public class NidabaApplicationWindow {
 
 	}
 	
-	
+	/*
+	 * 		 		PROCESSAR UPDATE
+	 * 1. Atualiza a lista de edições do arquivo
+	 */
 	
 	public void atualizarLogModificacoes() {
 		
@@ -1061,6 +1184,11 @@ public class NidabaApplicationWindow {
 
 	}
 	
+	/*
+	 * 		 		PROCESSAR UNSHARE FILE
+	 * 1. Mostra mensagem que o usuário não tem mais acesso ao arquivo
+	 * 2. Volta para a página Home
+	 */
 	public void processarUnshareFile(Event e) { 
 		UnshareResponse ur = (UnshareResponse) e.getContent();
 		
@@ -1084,7 +1212,12 @@ public class NidabaApplicationWindow {
 
 		}
 	}
-		
+	
+	/*
+	 * 		 		PROCESSAR SHARE FILE
+	 * 1. Atualiza lista de arquivos do usuário
+	 */
+	
 	public void processarShareFile() {
 		if ( HomePanel.isVisible() ) {
 			service.obterListaArquivos(session.getClientUsername());
@@ -1092,7 +1225,10 @@ public class NidabaApplicationWindow {
 	}
 	
 	
-	
+	/*
+	 * 		 		PROCESSAR NEW FILE
+	 * 1. Atualiza os campos do editor com as informações do arquivo
+	 */
 	public void processarNewFile(Event e) {
 		NewFileResponse newFileResponse = (NewFileResponse) e.getContent();
 		editorTextPane.setText(newFileResponse.getFile().getContent());
@@ -1109,7 +1245,12 @@ public class NidabaApplicationWindow {
 		atualizarLogModificacoes();
 	}
 	
-	
+	/*
+	 * 		 		PROCESSAR REGISTRAR
+	 * 1. Recebe a resposta do servidor do requisição de cadastro
+	 * 2. Informa o resultado da solicitação.
+	 */
+
 	public void processarRegistrar(Event e) {
 		SignUpResponse signUpResponse = (SignUpResponse) e.getContent();
 		SignUpStatus status = signUpResponse.getSignUpStatus();
@@ -1137,7 +1278,10 @@ public class NidabaApplicationWindow {
 		}
 	}
 	
-	
+	 /* 		 		PROCESSAR REQUEST EDITION
+	 * 1. Abre pop-up informando que outro usuário deseja editar o arquivo 
+	 */
+
 	public void processarRequestEdition(Event e) {
 		RequestEditionResponse rer = (RequestEditionResponse) e.getContent();
 		if (EditorPanel.isVisible())
@@ -1145,7 +1289,10 @@ public class NidabaApplicationWindow {
 
 	}
 	
-	
+	 /* 		 		PROCESSAR DELETE
+	 * 1. Significa que o arquivo foi deletado. Se o usuário estiver com ele aberto, volta pra Home e informa. Caso contrário, atualiza lista de arquivos.
+	 */
+
 	public void processarDelete(Event e) { 
 		DeleteResponse deleteResponse = (DeleteResponse) e.getContent();
 		if (EditorPanel.isVisible() && session.getDocumentID().intValue() == deleteResponse.getFileID().intValue()) {
@@ -1158,7 +1305,12 @@ public class NidabaApplicationWindow {
 		}
 	}
 	
-	
+	/*
+	 * 		 		PROCESSAR LOGIN
+	 * 1. Verifica a resposta da solicitação de Login
+	 * 2. Se os dados estiverem corretos, permite o login. Caso contrário, informa o motivo do login não ter sigo permitido.
+	 */
+
 	public void processarLogin(Event e) {
 		
 		LoginResponse loginResponse = (LoginResponse) e.getContent();
@@ -1182,6 +1334,11 @@ public class NidabaApplicationWindow {
 		}
 	}
 	
+	/*
+	 * 		 		PROCESSAR EDITING
+	 * 1. Altera o status do botão EDITAR de acordo com a resposta true (libera para edição) e false (restringe edição) 
+	 */
+
 	public void processarEditing(Event e) { 
 		
 		EditingResponse editingResponse = (EditingResponse) e.getContent();
@@ -1204,6 +1361,11 @@ public class NidabaApplicationWindow {
 		}
 	}
 
+	/*
+	 * 		 							EXPORTAR ARQUIVO
+	 * 1. Abre caixa de diálogo e permite que o usuário escolha onde salvar/exportar o arquivo
+	 */
+
 	public void exportarArquivo() {
 	    try {
 	        JFileChooser fileChooser = new JFileChooser();
@@ -1224,7 +1386,9 @@ public class NidabaApplicationWindow {
 		}
 	}
 	
-
+	/* 		 							
+	 *  Libera campos do editor
+	 */
 	public void apagaCamposEditor() {
 		editorDescricaoArquivoLabel2.setText("");
 		editorDescricaoCriacaoLabel2.setText("");

@@ -1,6 +1,8 @@
 package br.usp.nidaba.service;
 
-
+/*
+ * Objeto responsável por armazenar os dados da sessão.
+ */
 public class Session {
 	
 	private String clientUsername;

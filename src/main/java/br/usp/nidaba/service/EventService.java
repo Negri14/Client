@@ -20,6 +20,11 @@ import br.usp.nidaba.event.UnshareRequest;
 import br.usp.nidaba.event.UpdateFileRequest;
 import br.usp.nidaba.socket.Client;
 
+
+/* 
+ * 	Classe contém os métodos  responsáveis por criar o objeto EVENTO e enviar para o servidor via socket.
+ */
+
 public class EventService {
 	
 	private Client clientSocket;
@@ -29,7 +34,7 @@ public class EventService {
 		this.clientSocket = clientSocket;
 		
 	}
-	
+
 	public void enviarEventoEdicao(boolean estaEditando) {
 		
 		Event e = new Event(EventType.EDITING, new EditingRequest(estaEditando));
